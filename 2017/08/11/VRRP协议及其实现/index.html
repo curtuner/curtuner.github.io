@@ -1,0 +1,931 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.1" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Network," />
+
+
+
+
+
+  <link rel="alternate" href="/atom.xml" title="Curtuner's World" type="application/atom+xml" />
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.1" />
+
+
+
+
+
+
+<meta name="description" content="1 引言j   VRRP协议（Virt8ual Router Redundancy Protocol，虚拟路由冗余协议），用于解决局域网配置静态网关出现单点失效的问题。对于大型的局域网，避免单点失效是必要的。VRRP开始将一组路由器组成了 一个虚拟路由器 ，一般包含一个主路由器和几个备份的路由器。虚拟路由器拥有IP（对于连接它的局域网），同时虚拟路由器组内的路由器也会有自己的IP，可以认为">
+<meta name="keywords" content="Network">
+<meta property="og:type" content="article">
+<meta property="og:title" content="VRRP协议及其实现">
+<meta property="og:url" content="http://yoursite.com/2017/08/11/VRRP协议及其实现/index.html">
+<meta property="og:site_name" content="Curtuner&#39;s World">
+<meta property="og:description" content="1 引言j   VRRP协议（Virt8ual Router Redundancy Protocol，虚拟路由冗余协议），用于解决局域网配置静态网关出现单点失效的问题。对于大型的局域网，避免单点失效是必要的。VRRP开始将一组路由器组成了 一个虚拟路由器 ，一般包含一个主路由器和几个备份的路由器。虚拟路由器拥有IP（对于连接它的局域网），同时虚拟路由器组内的路由器也会有自己的IP，可以认为">
+<meta property="og:updated_time" content="2018-03-03T19:01:01.969Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="VRRP协议及其实现">
+<meta name="twitter:description" content="1 引言j   VRRP协议（Virt8ual Router Redundancy Protocol，虚拟路由冗余协议），用于解决局域网配置静态网关出现单点失效的问题。对于大型的局域网，避免单点失效是必要的。VRRP开始将一组路由器组成了 一个虚拟路由器 ，一般包含一个主路由器和几个备份的路由器。虚拟路由器拥有IP（对于连接它的局域网），同时虚拟路由器组内的路由器也会有自己的IP，可以认为">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":0,"b2t":false,"scrollpercent":false},
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/08/11/VRRP协议及其实现/"/>
+
+
+
+
+
+  <title>VRRP协议及其实现 | Curtuner's World</title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Curtuner's World</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/08/11/VRRP协议及其实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Curtuner">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/tune.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Curtuner's World">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">VRRP协议及其实现</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-08-11T08:00:00+08:00">
+                2017-08-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Network/" itemprop="url" rel="index">
+                    <span itemprop="name">Network</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+
+
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> 引言j</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+VRRP协议（Virt8ual Router Redundancy Protocol，虚拟路由冗余协议），用于解决局域网配置静态网关出现单点失效的问题。对于大型的局域网，避免单点失效是必要的。VRRP开始将一组路由器组成了 <b>一个虚拟路由器</b> ，一般包含一个主路由器和几个备份的路由器。虚拟路由器拥有IP（对于连接它的局域网），同时虚拟路由器组内的路由器也会有自己的IP，可以认为虚拟路由器其实是一个局域网。虚拟路由器对外还有MAC地址
+</p>
+</div>
+</div>
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> VRRP报文</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+VRRP只有一种报文，由主路由器定时向其他成员发送组播报文，其 <b>内容封装在IP报文中</b> 。每个虚拟路由器中的
+</p>
+</div>
+</div>
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> <span class="todo TODO">TODO</span> 问题 <code>[%]</code></h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li><code>[&#xa0;]</code> </li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-4" class="outline-2">
+<h2 id="sec-4"><span class="section-number-2">4</span> vrrpd</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+vrrpd是VRRP的是一个实现，作为一个守护进程一直运行在后台。其实现和协议一样非常简单，代码文件主要包括三部分。
+</p>
+</div>
+</div>
+<div id="outline-container-sec-5" class="outline-2">
+<h2 id="sec-5"><span class="section-number-2">5</span> 源码分析</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+源码量不大，一个主程序文件加3个编写好的库文件。作为库文件本身就需要暴露符号给其他模块供其链接。一个进程运行到main loop前，初始化的过程也会决定其之后的行为，所以即使不喜欢也有必要对基本的全局变量有一定了解。
+vrrpd是作为后台进程的，所以这个程序从其main开始分析比较好：
+</p>
+<div class="org-src-container">
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">( <span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[] )</span></span><br><span class="line"></span>{</span><br><span class="line">	vrrp_rt     *vsrv = &amp;glob_vsrv;</span><br><span class="line"></span><br><span class="line"><span class="preprocessor">#<span class="keyword">if</span> <span class="number">1</span>       <span class="comment">/* for debug only */</span></span></span><br><span class="line">	setbuf(<span class="built_in">stdout</span>,<span class="literal">NULL</span>);</span><br><span class="line">	setbuf(<span class="built_in">stderr</span>,<span class="literal">NULL</span>);</span><br><span class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// First we fork and kill our parent</span></span><br><span class="line">	<span class="keyword">if</span> (fork())</span><br><span class="line">		<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">	<span class="comment">// 实际syslog，不知这种alising是否有价值</span></span><br><span class="line">	vrrpd_log(LOG_WARNING, <span class="string">"vrrpd version %s starting...\n"</span>, VRRPD_VERSION);<span class="number">1</span></span><br><span class="line"></span><br><span class="line">	<span class="built_in">snprintf</span>( PidDir, <span class="keyword">sizeof</span>(PidDir), <span class="string">"%s"</span>, VRRP_PIDDIR_DFL );</span><br><span class="line"></span><br><span class="line">	init_virtual_srv(vsrv);</span><br><span class="line">	<span class="comment">/* parse the command line */</span></span><br><span class="line">	argc = parse_cmdline(vsrv,argc, argv );</span><br><span class="line">	<span class="keyword">if</span>( argc &lt; <span class="number">0</span> ) {</span><br><span class="line">		<span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">	}</span><br><span class="line">	<span class="comment">/* add the virtual server ip */</span></span><br><span class="line">	<span class="keyword">for</span>( ; argv[argc]; argc++ ){</span><br><span class="line">		<span class="keyword">uint32_t</span> ipaddr = inet_addr( argv[argc] );</span><br><span class="line">		cfg_add_ipaddr( vsrv, ntohl(ipaddr) );</span><br><span class="line">	}</span><br><span class="line">	<span class="comment">/* check if the minimal configuration has been done */</span></span><br><span class="line">	<span class="keyword">if</span>( chk_min_cfg( vsrv ) ){</span><br><span class="line">		<span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"try '%s -h' to read the help\n"</span>, argv[<span class="number">0</span>]);</span><br><span class="line">		<span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">	}</span><br><span class="line">	<span class="keyword">if</span>( open_sock( vsrv ) ){</span><br><span class="line">		<span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">	}</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* the init is completed */</span></span><br><span class="line">	vsrv-&gt;initF = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* init signal handler */</span></span><br><span class="line">	signal( SIGINT, signal_end );</span><br><span class="line">	signal( SIGTERM, signal_end );</span><br><span class="line">	signal( SIGUSR1, signal_user );</span><br><span class="line">	signal( SIGUSR2, signal_user );</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* try to write a pid file */</span></span><br><span class="line">	<span class="keyword">if</span>( pidfile_exist( vsrv ) ) <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">	pidfile_write( vsrv );</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* main loop */</span></span><br><span class="line">	<span class="keyword">while</span>( <span class="number">1</span> ){</span><br><span class="line">		<span class="keyword">switch</span>( vsrv-&gt;state ){</span><br><span class="line">		<span class="keyword">case</span> VRRP_STATE_INIT:       state_init( vsrv );     <span class="keyword">break</span>;</span><br><span class="line">		<span class="keyword">case</span> VRRP_STATE_BACK:       state_back( vsrv );     <span class="keyword">break</span>;</span><br><span class="line">		<span class="keyword">case</span> VRRP_STATE_MAST:       state_mast( vsrv );     <span class="keyword">break</span>;</span><br><span class="line">		}</span><br><span class="line">	}</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span>(<span class="number">0</span>);</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+</div>
+<p>
+可以看到初始化完毕后，程序是作为一个只有三个状态的状态机不断运行。而程序运行后其实状态就会进入Backup或者MAST状态。Initialize其实是在初始化时出现的状态。到了这里大概知道接下来要看vrrp<sub>rt的定义了。</sub>
+</p>
+<div class="org-src-container">
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> {    <span class="comment">/* parameters per virtual router -- rfc2338.6.1.2 */</span></span><br><span class="line">	<span class="keyword">int</span> vrid;           <span class="comment">/* virtual id. from 1(!) to 255 */</span></span><br><span class="line">	<span class="keyword">int</span> priority;       <span class="comment">/* priority value */</span></span><br><span class="line">	<span class="keyword">int</span> naddr;          <span class="comment">/* number of ip addresses */</span></span><br><span class="line">	vip_addr *vaddr;    <span class="comment">/* point on the ip address array */</span></span><br><span class="line">	<span class="keyword">int</span> adver_int;      <span class="comment">/* delay between advertisements(in sec) */</span>      </span><br><span class="line"></span><br><span class="line"><span class="preprocessor">#<span class="keyword">if</span> <span class="number">0</span>       <span class="comment">/* dynamically calculated */</span></span></span><br><span class="line">	<span class="keyword">double</span>      skew_time;      <span class="comment">/* skew Master_Down_Interval. (256-Prio)/256 */</span> </span><br><span class="line">	<span class="keyword">int</span> mast_down_int;  <span class="comment">/* interval for backup to declare master down*/</span></span><br><span class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></span><br><span class="line">	<span class="keyword">int</span> preempt;        <span class="comment">/* true if a higher prio preempt a lower one */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> state;          <span class="comment">/* internal state (init/backup/master) */</span></span><br><span class="line">	<span class="keyword">int</span> wantstate;      <span class="comment">/* user explicitly wants a state (back/mast) */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> sockfd;         <span class="comment">/* the socket descriptor */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> initF;          <span class="comment">/* true if the struct is init */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> no_vmac;        <span class="comment">/* dont handle the virtual MAC --rfc2338.7.3 */</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* rfc2336.6.2 */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>    ms_down_timer;</span><br><span class="line">	<span class="keyword">uint32_t</span>    adver_timer;</span><br><span class="line"></span><br><span class="line">	vrrp_if     vif;</span><br><span class="line">} vrrp_rt;</span><br></pre></td></tr></table></figure>
+</div>
+<p>
+vrid是虚拟路由器的ID，要注意这个ID不属于任何一个具体的路由器。虚拟路由器组中只有一个主路由器，priority则是用于选举主路由器，其中255和0是保留的值：255被保留给拥有虚拟路由器IP的IP地址所有者，0这用于主路由器指示其将改变Master状态。默认值是100。接下来的naddr和vaddr表示一个虚拟路由器的IP地址，可以是一个或者多个。adver<sub>int代表主路由器发送VRRP报文的间隔，默认为一秒。</sub>
+</p>
+<div class="org-src-container">
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> {    <span class="comment">/* parameters per virtual router -- rfc2338.6.1.2 */</span></span><br><span class="line">	<span class="keyword">int</span> vrid;           <span class="comment">/* virtual id. from 1(!) to 255 */</span></span><br><span class="line">	<span class="keyword">int</span> priority;       <span class="comment">/* priority value */</span></span><br><span class="line">	<span class="keyword">int</span> naddr;          <span class="comment">/* number of ip addresses */</span></span><br><span class="line">	vip_addr *vaddr;    <span class="comment">/* point on the ip address array */</span></span><br><span class="line">	<span class="keyword">int</span> adver_int;      <span class="comment">/* delay between advertisements(in sec) */</span>      </span><br><span class="line"></span><br><span class="line"><span class="preprocessor">#<span class="keyword">if</span> <span class="number">0</span>       <span class="comment">/* dynamically calculated */</span></span></span><br><span class="line">	<span class="keyword">double</span>      skew_time;      <span class="comment">/* skew Master_Down_Interval. (256-Prio)/256 */</span> </span><br><span class="line">	<span class="keyword">int</span> mast_down_int;  <span class="comment">/* interval for backup to declare master down*/</span></span><br><span class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></span><br><span class="line">	<span class="keyword">int</span> preempt;        <span class="comment">/* true if a higher prio preempt a lower one */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> state;          <span class="comment">/* internal state (init/backup/master) */</span></span><br><span class="line">	<span class="keyword">int</span> wantstate;      <span class="comment">/* user explicitly wants a state (back/mast) */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> sockfd;         <span class="comment">/* the socket descriptor */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> initF;          <span class="comment">/* true if the struct is init */</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> no_vmac;        <span class="comment">/* dont handle the virtual MAC --rfc2338.7.3 */</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* rfc2336.6.2 */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>    ms_down_timer;</span><br><span class="line">	<span class="keyword">uint32_t</span>    adver_timer;</span><br><span class="line"></span><br><span class="line">	vrrp_if     vif;</span><br><span class="line">} vrrp_rt;</span><br></pre></td></tr></table></figure>
+</div>
+<p>
+这个是这个结构题vrrp<sub>rt，的rt的意思应该是router，这是虚拟路由的设置结构体。vrrp</sub><sub>rt其实是一个状态机的数据而已。所以对于vrrp的实现重在状态机。一个比较细节的是，这个状态机接收的输入只是数据报，也包括程序的数据。所以vrrp</sub><sub>rt的定义要包括状态字段。之后再根据转移的函数增加字段。回顾一下有限自动机的定义：</sub>
+</p>
+<blockquote>
+<p>
+有穷自动机是由一个5元组\((Q, \sum, \delta, q_0, F)\)
+</p>
+<ol class="org-ol">
+<li>\(Q\) 是一个有穷集合，叫做状态集
+</li>
+<li>\(\sum\) 是一个用穷集合，叫做字母表
+</li>
+<li>\(\delta\) ：\(Q \mul \sum -> Q\) 是一个转移函数
+</li>
+<li>\(q_0 \sub Q\) 是起始状态
+</li>
+<li>\(F \sub Q\) 是接受状态集
+</li>
+</ol>
+</blockquote>
+<p>
+查看vrrp的文档，状态定义没问题。关键在于把输入字母表和转移函数理清。顺带一提，三个状态都是接受状态。这里把使状态改变的字母表设定叫做某个事件。和处理字符串或者文本文件的自动机不同，路由器会长期在某个状态下停留，不知道什么时候能收到事件。
+状态机化简之后，其他字段只是作为当前状态的映射信息而已。
+</p>
+</div>
+
+<div id="outline-container-sec-5-1" class="outline-3">
+<h3 id="sec-5-1"><span class="section-number-3">5.1</span> open<sub>sock</sub>()</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+这个函数用于打开socket并将其加入多播组中
+</p>
+</div>
+</div>
+<div id="outline-container-sec-5-2" class="outline-3">
+<h3 id="sec-5-2"><span class="section-number-3">5.2</span> 原始套接字</h3>
+<div class="outline-text-3" id="text-5-2">
+</div><div id="outline-container-sec-5-2-1" class="outline-4">
+<h4 id="sec-5-2-1"><span class="section-number-4">5.2.1</span> 前言</h4>
+<div class="outline-text-4" id="text-5-2-1">
+<p>
+原始套接字只有超级用户可以使用，这样可以防止普通用户往网络发送自行构造的IP数据报。另一方面我们也可以使用原始套接字来设计在IP层之上的协议
+</p>
+</div>
+</div>
+<div id="outline-container-sec-5-2-2" class="outline-4">
+<h4 id="sec-5-2-2"><span class="section-number-4">5.2.2</span> 作用</h4>
+<div class="outline-text-4" id="text-5-2-2">
+<p>
+有了原始套接字：
+</p>
+<ul class="org-ul">
+<li>进程可以区别ICMP和IGMP等分组
+</li>
+<li>进程可以读写未处理协议字段的IPv4的报文
+</li>
+<li>TCP或者UDP分组
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-sec-6" class="outline-2">
+<h2 id="sec-6"><span class="section-number-2">6</span> 阅读协议实现代码的思路</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+先查看数据类型的定义以及对于数据类型的操作函数。
+</p>
+</div>
+</div>
+<div id="outline-container-sec-7" class="outline-2">
+<h2 id="sec-7"><span class="section-number-2">7</span> 有限状态机</h2>
+</div>
+<div id="outline-container-sec-8" class="outline-2">
+<h2 id="sec-8"><span class="section-number-2">8</span> 零散</h2>
+<div class="outline-text-2" id="text-8">
+<ul class="org-ul">
+<li>每个虚拟路由器中的路由器都处于三种状态：Initialize，Master和Backup
+</li>
+<li>高层的协议包括实现了哪些概念，用到了哪些概念，如何构建信的概念。这是一般抽象的过程。
+</li>
+<li>守护进程的编写和一般用户程序的编写的一个不同之处在于编程，对于错误一般写到日志中。
+</li>
+<li>二进制协议一般没有parse的必要，这也是效率高的一个原因
+</li>
+</ul>
+</div>
+<div id="outline-container-sec-8-1" class="outline-3">
+<h3 id="sec-8-1"><span class="section-number-3">8.1</span> VRRP组播报文的TTL是255direct</h3>
+</div>
+<div id="outline-container-sec-8-2" class="outline-3">
+<h3 id="sec-8-2"><span class="section-number-3">8.2</span> pid文件使用来做什么？</h3>
+</div>
+<div id="outline-container-sec-8-3" class="outline-3">
+<h3 id="sec-8-3"><span class="section-number-3">8.3</span> checksum计算</h3>
+</div>
+
+<div id="outline-container-sec-8-4" class="outline-3">
+<h3 id="sec-8-4"><span class="section-number-3">8.4</span> 结构体设计的思路（相比之下其他的只是技术细节）</h3>
+<div class="outline-text-3" id="text-8-4">
+<p>
+若结构体是作为数据结构的组成部分，则要支持查询功能。一般要在结构体定义中提供关键字或者ID。当然如果结构体在程序中只有一个实例时，这部分可能没那种重要，顶多提供一些额外的信息而已，在设计初期可以不考虑。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-9" class="outline-2">
+<h2 id="sec-9"><span class="section-number-2">9</span> 思考</h2>
+<div class="outline-text-2" id="text-9">
+<ul class="org-ul">
+<li>二进制协议的设计一般是和程序的处理逻辑相关的，先使用的在前，后使用的则在后。
+</li>
+<li>还是看不出C语言分开多个文件的编写对于抽象的价值，不过一般一系列功能联系紧密的还是设置成一个模块比较好，就像类定义一样。这样编译出错时只要修改一个文件即可。不过从抽象的程度来看其实和全部函数写一个文件上没有太大区别，编译速度还能加快。
+</li>
+<li>主程序文件其实没有必要过于在意符号污染的问题，一旦发现符号重定义，大不了改名。因为主程序文件一般不会被作为模块被使用。不过如果为了避免重复定义的问题也可以直接用static。主程序文件是符号的使用者，而不是符号的
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-10" class="outline-2">
+<h2 id="sec-10"><span class="section-number-2">10</span> 参考</h2>
+<div class="outline-text-2" id="text-10">
+<ul class="org-ul">
+<li><a href="https://sourceforge.net/projects/vrrpd/?source=typ_redirect" target="_blank" rel="external">vrrp实现源码下载地址</a>
+</li>
+<li>《Unix网络编程 卷I 套接字联网API》
+</li>
+<li></li>
+</ul>
+</div>
+</div>
+
+Last Updated 2018-03-04 日 03:01.<br>Render by <a href="https://github.com/CodeFalling/hexo-renderer-org" target="_blank" rel="external">hexo-renderer-org</a> with <a href="http://www.gnu.org/software/emacs/" target="_blank" rel="external">Emacs</a> 25.3.1 (<a href="http://orgmode.org" target="_blank" rel="external">Org</a> mode 8.2.10)
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Network/" rel="tag"># Network</a>
+          
+        </div>
+      
+
+      
+        
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/08/11/Linux模块的知识/" rel="next" title="Linux模块的知识">
+                <i class="fa fa-chevron-left"></i> Linux模块的知识
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/11/15/rdp代理概述/" rel="prev" title="rdp代理概述">
+                rdp代理概述 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/tune.jpg"
+               alt="Curtuner" />
+          <p class="site-author-name" itemprop="name">Curtuner</p>
+           
+              <p class="site-description motion-element" itemprop="description">守望者</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">12</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              
+                <span class="site-state-item-count">68</span>
+                <span class="site-state-item-name">分类</span>
+              
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/tags/index.html">
+                <span class="site-state-item-count">73</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml" rel="alternate">
+              <i class="fa fa-rss"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/curtuner" target="_blank" title="Github">
+                  
+                    <i class="fa fa-fw fa-globe"></i>
+                  
+                  Github
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-1"><span class="nav-number">1.</span> <span class="nav-text">1 引言j</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-2"><span class="nav-number">2.</span> <span class="nav-text">2 VRRP报文</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-3"><span class="nav-number">3.</span> <span class="nav-text">3 TODO 问题 [%]</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-4"><span class="nav-number">4.</span> <span class="nav-text">4 vrrpd</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-5"><span class="nav-number">5.</span> <span class="nav-text">5 源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-5-1"><span class="nav-number">5.1.</span> <span class="nav-text">5.1 opensock()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-5-2"><span class="nav-number">5.2.</span> <span class="nav-text">5.2 原始套接字</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#sec-5-2-1"><span class="nav-number">5.2.1.</span> <span class="nav-text">5.2.1 前言</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#sec-5-2-2"><span class="nav-number">5.2.2.</span> <span class="nav-text">5.2.2 作用</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-6"><span class="nav-number">6.</span> <span class="nav-text">6 阅读协议实现代码的思路</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-7"><span class="nav-number">7.</span> <span class="nav-text">7 有限状态机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-8"><span class="nav-number">8.</span> <span class="nav-text">8 零散</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-8-1"><span class="nav-number">8.1.</span> <span class="nav-text">8.1 VRRP组播报文的TTL是255direct</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-8-2"><span class="nav-number">8.2.</span> <span class="nav-text">8.2 pid文件使用来做什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-8-3"><span class="nav-number">8.3.</span> <span class="nav-text">8.3 checksum计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sec-8-4"><span class="nav-number">8.4.</span> <span class="nav-text">8.4 结构体设计的思路（相比之下其他的只是技术细节）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-9"><span class="nav-number">9.</span> <span class="nav-text">9 思考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sec-10"><span class="nav-number">10.</span> <span class="nav-text">10 参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Curtuner</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Mist
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.1"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.1"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.1"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.1"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.1"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
