@@ -1,0 +1,10 @@
+#+TITLE: monad理解
+#+DATE: 2017-05-17
+#+LAYOUT: post
+#+TAGS: Monad
+#+CATEGORIES: Monad
+
+* CPS(continuation-passing style)
+  表达式中缺少的部分叫做hole，一个带有hole的表达式就是continuation。continuation可以理解为 *后续部分* 。continuation是链式的，一个continuation链接着下一个continuation。
+** 零散
+   - 最后一个continuation是halt（或者一般用identity）

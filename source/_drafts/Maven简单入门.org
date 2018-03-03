@@ -1,0 +1,46 @@
+#+TITLE: Maven简单入门
+#+DATE: 2018-01-03
+#+LAYOUT: post
+#+TAGS: Maven, Java
+#+CATEGORIES: Maven
+
+* 引言
+  Maven 是一个项目管理和构建自动化工具。Maven 使用惯例优于配置的原则。
+  
+  |-------------------------------+------------------------------|
+  | 目录                          | 目的                         |
+  |-------------------------------+------------------------------|
+  | $(basedir)                    | 存放pom.xml和所有子目录      |
+  | $(basedir)/src/main/java      | 项目的java源代码文件         |
+  | $(basedir)/src/main/resources | 项目的资源，比如property文件 |
+  | $(basedir)/src/test/java      | 项目的测试类，比如JUnit代码  |
+  | $(basedir)/src/test/resources | 测试使用的资源               |
+  |-------------------------------+------------------------------|
+
+  一个maven项目默认会产生JAR文件，编译完成后，classes文件会放在$(basedir)/target/classes下面，JAR文件会放在$(basedir)/target
+  pom.xml用于描述项目，Project Object Model，这个文件用于描述项目，配置插件和管理依赖关系，
+  maven的archetype会建立项目目录
+** 构建和运行程序
+   maven一般使用下面命令来构建和编译项目：
+   #+BEGIN_SRC sh
+   mvn package
+   #+END_SRC
+   编译后的class文件放在target/classes/目录下
+
+   一般来说，每个maven项目会有pom.xml，大项目由几个小项目组成
+
+   archetype是一个插件的名字，archetype:
+* maven坐标
+  groupId、artifactId、version定位一个maven项目
+* maven远程库
+  maven默认有远程库，远程库包含一些核心插件和jar文件，maven下载了远程库的东西后，会在本地留下一份拷贝，maven查找需要的jar文件的时候，会现在本地库中查找，只有在找不到的情况下，才会去远程库中查找。本地库中查找，当然也可以把自己的项目安装到本地库中。
+  Java默认了会需要多人协作，
+* maven依赖管理
+  maven会自己分析依赖的链
+* maven插件
+  maven是依靠插件来完成任务的，所以即使插件更新也可以很方便。
+* 聚合项目
+  聚合项目由一个父模块和一个子摸块组成，其中父模块的打包类型是pom，每个module都是独立的maven项目
+* guacamole
+* 参考
+  - [[http://www.oracle.com/technetwork/cn/community/java/apache-maven-getting-started-1-406235-zhs.html][Apache Maven 入门篇 ( 上 )]]

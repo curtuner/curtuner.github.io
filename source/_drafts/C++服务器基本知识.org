@@ -1,0 +1,41 @@
+#+TITLE: C++服务器基本知识
+#+DATE: 2017-03-20
+#+LAYOUT: post
+#+TAGS: 服务器
+#+CATEGORIES: 服务器
+
+* 服务器性能调优
+** 要点
+   要进行优化，一定要先找到性能瓶颈。
+** 性能的理解
+   性能有两方面：
+   1) Throughput（吞吐量）:单位时间内可以处理的请求数、任务数
+   2) Latency（延迟）：系统处理一个请求或任务时的延迟
+   一般而言，Throughput越大，Latency越差。而Latency越小则Throughput越大
+** TODO 工具
+*** top
+**** top字段的含义
+     - VIRT: 进程需要的虚拟内存
+     - VIRT: 进程的唯一标识
+** 优化点
+   - CPU利用率
+   - 磁盘文件IO
+   - 驱动程序IO
+** 如何查找性能瓶颈
+   1) 差看操作系统负载
+   2) 使用profiler测试，
+** 零散要点
+   - CPU 0 来完成各个核之间的调度，如果CPU 0 负载高，那么会影响其他核的性能
+** TODO 问题 [0%]
+   - [ ] 负载是什么
+** 参考文献
+   - http://www.cnblogs.com/zackyang/archive/2010/01/19/1651566.html
+   - http://www.cnblogs.com/zhoug2020/p/6336453.html
+   - http://coolshell.cn/articles/7490.html
+
+* 
+* 零散
+** 反向代理和正向代理（代理）的区别
+   区别在于代理的主体，反向代理代理的是服务器，正向代理代理的是客户端
+  
+

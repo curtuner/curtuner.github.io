@@ -1,0 +1,25 @@
+#+TITLE: 词法分析器
+#+DATE: 2017-05-25
+#+LAYOUT: post
+#+TAGS: Algorithm, Compiler
+#+CATEGORIES: Algorithm
+
+* 前言
+  词法分析器实际上是模式匹配器，所以其实关键在于理解模式匹配算法。同时虽然叫词法分析器，但在编译器中，它一般只是一个子程序而已。对于词法分析器的调用每次只返回一个lexeme和token。lexeme是字符串的逻辑分组，token指分组类别的内部标记。
+* 模式匹配
+  一般的词法分析使用的是自动机来表示模式和匹配。
+* TODO token
+  一般token大致分为几类，标识符，数据类型，已有指代对象（过程或数据）的符号，具有语法意义的符号，EOF，UNKNOWN。以C语言为例，大概可以这么记：
+  #+BEGIN_SRC C
+    int id = 3.1;
+  #+END_SRC
+  这个语句中包括了关键字
+
+* flex
+  
+* 思路
+  一般先确定所有的模式（词法）是编写词法分析器的起点。要处理注释
+  我们要实现的只是有个有状态的gettok而已
+* FAQ
+* 参考
+  - [[http://llvm.org/docs/tutorial/index.html][Kaleidoscope语言实现]]

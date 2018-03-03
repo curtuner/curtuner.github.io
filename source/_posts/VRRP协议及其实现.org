@@ -1,0 +1,188 @@
+#+TITLE: VRRP协议及其实现
+#+DATE: 2017-08-11
+#+LAYOUT: post
+#+TAGS: Network
+#+CATEGORIES: Network
+
+* 引言j
+  VRRP协议（Virt8ual Router Redundancy Protocol，虚拟路由冗余协议），用于解决局域网配置静态网关出现单点失效的问题。对于大型的局域网，避免单点失效是必要的。VRRP开始将一组路由器组成了 *一个虚拟路由器* ，一般包含一个主路由器和几个备份的路由器。虚拟路由器拥有IP（对于连接它的局域网），同时虚拟路由器组内的路由器也会有自己的IP，可以认为虚拟路由器其实是一个局域网。虚拟路由器对外还有MAC地址
+* VRRP报文
+  VRRP只有一种报文，由主路由器定时向其他成员发送组播报文，其 *内容封装在IP报文中* 。每个虚拟路由器中的
+* TODO 问题 [%]
+  - [ ] 
+* vrrpd
+  vrrpd是VRRP的是一个实现，作为一个守护进程一直运行在后台。其实现和协议一样非常简单，代码文件主要包括三部分。
+* 源码分析
+  源码量不大，一个主程序文件加3个编写好的库文件。作为库文件本身就需要暴露符号给其他模块供其链接。一个进程运行到main loop前，初始化的过程也会决定其之后的行为，所以即使不喜欢也有必要对基本的全局变量有一定了解。
+  vrrpd是作为后台进程的，所以这个程序从其main开始分析比较好：
+  #+BEGIN_SRC C
+    int main( int argc, char *argv[] )
+    {
+	    vrrp_rt	*vsrv = &glob_vsrv;
+
+    #if 1	/* for debug only */
+	    setbuf(stdout,NULL);
+	    setbuf(stderr,NULL);
+    #endif
+	
+	    // First we fork and kill our parent
+	    if (fork())
+		    exit(0);
+	    // 实际syslog，不知这种alising是否有价值
+	    vrrpd_log(LOG_WARNING, "vrrpd version %s starting...\n", VRRPD_VERSION);1
+
+	    snprintf( PidDir, sizeof(PidDir), "%s", VRRP_PIDDIR_DFL );
+
+	    init_virtual_srv(vsrv);
+	    /* parse the command line */
+	    argc = parse_cmdline(vsrv,argc, argv );
+	    if( argc < 0 ) {
+		    return -1;
+	    }
+	    /* add the virtual server ip */
+	    for( ; argv[argc]; argc++ ){
+		    uint32_t ipaddr = inet_addr( argv[argc] );
+		    cfg_add_ipaddr( vsrv, ntohl(ipaddr) );
+	    }
+	    /* check if the minimal configuration has been done */
+	    if( chk_min_cfg( vsrv ) ){
+		    fprintf(stderr, "try '%s -h' to read the help\n", argv[0]);
+		    return -1;
+	    }
+	    if( open_sock( vsrv ) ){
+		    return -1;
+	    }
+
+	    /* the init is completed */
+	    vsrv->initF = 1;
+
+	    /* init signal handler */
+	    signal( SIGINT, signal_end );
+	    signal( SIGTERM, signal_end );
+	    signal( SIGUSR1, signal_user );
+	    signal( SIGUSR2, signal_user );
+
+	    /* try to write a pid file */
+	    if( pidfile_exist( vsrv ) )	return -1;
+	    pidfile_write( vsrv );
+
+	    /* main loop */
+	    while( 1 ){
+		    switch( vsrv->state ){
+		    case VRRP_STATE_INIT:	state_init( vsrv );	break;
+		    case VRRP_STATE_BACK:	state_back( vsrv );	break;
+		    case VRRP_STATE_MAST:	state_mast( vsrv );	break;
+		    }
+	    }
+
+	    return(0);
+    }
+  #+END_SRC
+  可以看到初始化完毕后，程序是作为一个只有三个状态的状态机不断运行。而程序运行后其实状态就会进入Backup或者MAST状态。Initialize其实是在初始化时出现的状态。到了这里大概知道接下来要看vrrp_rt的定义了。
+  #+BEGIN_SRC C
+    typedef struct {	/* parameters per virtual router -- rfc2338.6.1.2 */
+	    int	vrid;		/* virtual id. from 1(!) to 255 */
+	    int	priority;	/* priority value */
+	    int	naddr;		/* number of ip addresses */
+	    vip_addr *vaddr;	/* point on the ip address array */
+	    int	adver_int;	/* delay between advertisements(in sec) */	
+
+    #if 0	/* dynamically calculated */
+	    double	skew_time;	/* skew Master_Down_Interval. (256-Prio)/256 */	
+	    int	mast_down_int;	/* interval for backup to declare master down*/
+    #endif
+	    int	preempt;	/* true if a higher prio preempt a lower one */
+
+	    int	state;		/* internal state (init/backup/master) */
+	    int	wantstate;	/* user explicitly wants a state (back/mast) */
+
+	    int	sockfd;		/* the socket descriptor */
+	
+	    int	initF;		/* true if the struct is init */
+	
+	    int	no_vmac;	/* dont handle the virtual MAC --rfc2338.7.3 */
+
+	    /* rfc2336.6.2 */
+	    uint32_t	ms_down_timer;
+	    uint32_t	adver_timer;
+
+	    vrrp_if	vif;
+    } vrrp_rt;
+  #+END_SRC
+  vrid是虚拟路由器的ID，要注意这个ID不属于任何一个具体的路由器。虚拟路由器组中只有一个主路由器，priority则是用于选举主路由器，其中255和0是保留的值：255被保留给拥有虚拟路由器IP的IP地址所有者，0这用于主路由器指示其将改变Master状态。默认值是100。接下来的naddr和vaddr表示一个虚拟路由器的IP地址，可以是一个或者多个。adver_int代表主路由器发送VRRP报文的间隔，默认为一秒。
+  #+BEGIN_SRC C
+    typedef struct {	/* parameters per virtual router -- rfc2338.6.1.2 */
+	    int	vrid;		/* virtual id. from 1(!) to 255 */
+	    int	priority;	/* priority value */
+	    int	naddr;		/* number of ip addresses */
+	    vip_addr *vaddr;	/* point on the ip address array */
+	    int	adver_int;	/* delay between advertisements(in sec) */	
+
+    #if 0	/* dynamically calculated */
+	    double	skew_time;	/* skew Master_Down_Interval. (256-Prio)/256 */	
+	    int	mast_down_int;	/* interval for backup to declare master down*/
+    #endif
+	    int	preempt;	/* true if a higher prio preempt a lower one */
+
+	    int	state;		/* internal state (init/backup/master) */
+	    int	wantstate;	/* user explicitly wants a state (back/mast) */
+
+	    int	sockfd;		/* the socket descriptor */
+	
+	    int	initF;		/* true if the struct is init */
+	
+	    int	no_vmac;	/* dont handle the virtual MAC --rfc2338.7.3 */
+
+	    /* rfc2336.6.2 */
+	    uint32_t	ms_down_timer;
+	    uint32_t	adver_timer;
+
+	    vrrp_if	vif;
+    } vrrp_rt;
+  #+END_SRC
+  这个是这个结构题vrrp_rt，的rt的意思应该是router，这是虚拟路由的设置结构体。vrrp_rt其实是一个状态机的数据而已。所以对于vrrp的实现重在状态机。一个比较细节的是，这个状态机接收的输入只是数据报，也包括程序的数据。所以vrrp_rt的定义要包括状态字段。之后再根据转移的函数增加字段。回顾一下有限自动机的定义：
+  #+BEGIN_QUOTE
+  有穷自动机是由一个5元组$(Q, \sum, \delta, q_0, F)$
+  1) $Q$ 是一个有穷集合，叫做状态集
+  2) $\sum$ 是一个用穷集合，叫做字母表
+  3) $\delta$ ：$Q \mul \sum -> Q$ 是一个转移函数
+  4) $q_0 \sub Q$ 是起始状态
+  5) $F \sub Q$ 是接受状态集
+  #+END_QUOTE
+  查看vrrp的文档，状态定义没问题。关键在于把输入字母表和转移函数理清。顺带一提，三个状态都是接受状态。这里把使状态改变的字母表设定叫做某个事件。和处理字符串或者文本文件的自动机不同，路由器会长期在某个状态下停留，不知道什么时候能收到事件。
+  状态机化简之后，其他字段只是作为当前状态的映射信息而已。
+
+** open_sock()
+   这个函数用于打开socket并将其加入多播组中
+** 原始套接字
+*** 前言
+    原始套接字只有超级用户可以使用，这样可以防止普通用户往网络发送自行构造的IP数据报。另一方面我们也可以使用原始套接字来设计在IP层之上的协议
+*** 作用
+    有了原始套接字：
+    - 进程可以区别ICMP和IGMP等分组
+    - 进程可以读写未处理协议字段的IPv4的报文
+    - TCP或者UDP分组
+* 阅读协议实现代码的思路
+  先查看数据类型的定义以及对于数据类型的操作函数。
+* 有限状态机
+* 零散
+  - 每个虚拟路由器中的路由器都处于三种状态：Initialize，Master和Backup
+  - 高层的协议包括实现了哪些概念，用到了哪些概念，如何构建信的概念。这是一般抽象的过程。
+  - 守护进程的编写和一般用户程序的编写的一个不同之处在于编程，对于错误一般写到日志中。
+  - 二进制协议一般没有parse的必要，这也是效率高的一个原因
+** VRRP组播报文的TTL是255direct
+** pid文件使用来做什么？
+** checksum计算
+   
+** 结构体设计的思路（相比之下其他的只是技术细节）
+   若结构体是作为数据结构的组成部分，则要支持查询功能。一般要在结构体定义中提供关键字或者ID。当然如果结构体在程序中只有一个实例时，这部分可能没那种重要，顶多提供一些额外的信息而已，在设计初期可以不考虑。
+
+* 思考
+  - 二进制协议的设计一般是和程序的处理逻辑相关的，先使用的在前，后使用的则在后。
+  - 还是看不出C语言分开多个文件的编写对于抽象的价值，不过一般一系列功能联系紧密的还是设置成一个模块比较好，就像类定义一样。这样编译出错时只要修改一个文件即可。不过从抽象的程度来看其实和全部函数写一个文件上没有太大区别，编译速度还能加快。
+  - 主程序文件其实没有必要过于在意符号污染的问题，一旦发现符号重定义，大不了改名。因为主程序文件一般不会被作为模块被使用。不过如果为了避免重复定义的问题也可以直接用static。主程序文件是符号的使用者，而不是符号的
+* 参考
+  - [[https://sourceforge.net/projects/vrrpd/?source=typ_redirect][vrrp实现源码下载地址]]
+  - 《Unix网络编程 卷I 套接字联网API》
+  - 
+  

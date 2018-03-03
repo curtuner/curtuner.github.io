@@ -1,0 +1,10 @@
+#+TITLE: 单元测试
+#+DATE: 2018-01-17
+#+LAYOUT: post
+#+TAGS: 单元测试, 编程
+#+CATEGORIES: 测试
+
+* Python单元测试
+  Python通过继承unittest.TestCase，来实现单元测试类。
+** 测试
+* Django单元测试

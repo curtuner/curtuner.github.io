@@ -1,0 +1,13 @@
+#+TITLE: Linux系统调用简述
+#+DATE: 2017-11-06
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES:
+
+* TODO 概述
+  系统调用（system call），或者称为系统呼叫会更好理解，就字面上把它理解为一种行为比较好，指的是
+* 
+* 参考
+  - [[https://zh.wikipedia.org/wiki/%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8][系统调用wiki]]
+  - 《程序员的自我修养》
+

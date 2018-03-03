@@ -1,0 +1,12 @@
+#+TITLE: 关于多进程
+#+DATE: 2017-08-17
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* FAQ
+** 父进程比子进程先停止后，子进程的父进程如何改变？
+   此时，子进程会称为孤儿进程，系统会重置子进程的父进程为pid为1的进程。
+** 关于telnet和shell的关系
+   
+   

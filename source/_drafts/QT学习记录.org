@@ -1,0 +1,92 @@
+#+TITLE: QT学习记录
+#+DATE: 2016-12-29
+#+LAYOUT: post
+#+TAGS: QT
+#+CATEGORIES: QT
+
+* 工程建立
+  #+BEGIN_SRC bash
+  $ qmake -project
+  #+END_SRC
+  它会自动分析源码和其他信息建立工程，产生“目录名.pro"文件
+* 程序编写
+** 要点
+   - Application类的对象是每一各Qt应用必须创建的对象（除了控制台的应用）
+** 居中显示
+   #+BEGIN_SRC C++
+     Window win;
+     win.setWindowTitle("hehe");
+     auto screenGeo = QApplication::desktop()->screenGeometry();
+     win.move((screenGeo.width() - win.width()) / 2,
+   	   (screenGeo.height() - win.height()) / 2);
+
+     win.show();
+   #+END_SRC
+* 布局管理
+  直观来说布局管理就是管理控件的尺寸和位置。Qt中QWidget和QLayout是独立的类但往往又是不可分离使用的。Qt提供了两种布局方法：
+  - 手动布局
+  - 布局管理器
+  - new一个布局管理器时，如果没有参数就意味者要将它加入到另一个布局管理器
+** Qt中的布局管理方式
+   - 绝对定位：调用QWidget::setGeometry()，对控件进行绝对定位
+   - 手工定位：在resizeEvent等函数中调用，根据参数编写代码对空间进行定位
+   - 使用布局管理器：如使用QLayout管理控件
+** 常用的布局管理的类
+*** QVBoxLayout
+    垂直的布局管理器
+*** QHBoxLayout
+    水平的布局管理器
+*** QFormLayout
+    表格，用于填写数据
+*** QGridLayout
+    比较通用的布局管理器
+* 元对象系统
+** 目的
+   统一实现对象间的通信
+** 三个基础
+   1) QObject: 为所有需要元对象系统的对象提供基类
+   2) QOBJECT: 通常声明在类的私有段中，让该类可以使用元对象的特性，比如动态属性，信号和槽
+   3) 编译器：为每个QObject子对象自动生成必要的代码来实现元对象的特性
+* 重要类和重要继承关系的理解
+** QObject
+   QObject所有Qt类的基类。
+** QWidget
+   QWidget是在Qt中建立用户接口的最基本元素。
+** QAction
+   - 提供可以插入到QWidget一个抽象接口
+   - 每个QMenu都至少有一个QAction
+   - 主要用于菜单栏和工具栏的组件，在菜单栏上显示为文本。
+** QPainter和QPaintDevice
+   两者都是最基本的类，应该和属于utility的部分，是基本控件的非必要部分
+* 事件驱动
+  一般的Gui的用户输入的频率较低，使用轮询效率比较低下。而且可能比较难于处理。事件驱动可以有中心的程序将事件派送给需要的部分。我的理解是在这种情况下Gui和内核一样就是一个被动等待唤醒的程序。只不过与操作系统相比Qt没有硬件的帮助，所以要自己设置环境一个不断等待时间的程序，这里应该使用了轮询才对。Application类的对象的exec()方法就是启动这个轮询环境的接口。
+  一个对象可能产生的signal事先可以有定义，
+  connect() 连接了signal和一个slot
+* 数据结构
+** QString及其子类QConstString
+*** 功能
+    提供了Unicode字符串，内部由2-bytes的QChar组成。原生的string不能使用了，一个框架往往会提供自己的数据结构，这点要习惯。为此可能需要了解相互之间转化的方法。
+*** 接口和资源管理
+    
+** QList及其子类QQueue, QStringList
+** QVector及其子类QStack
+** QHash及其QMultiHash
+** QMap及其QMultiMap
+* Utility
+** QDate, QTime, QDateTime
+** QFile, QDir, QFileInfo（提供了平台独立的方法）
+** 内置图标
+   所以Qt还是提供了图标来使用的，在QStyle::standIcon中
+* 零散
+  - signal也是函数
+  - qApp是一个指向application object的全局指针，定义在QApplication头文件中
+  - 声明slot时private slots来表明之后是slot函数，其中slot是空宏，所以private slots的含义和private相同，只是可读性上升了而已
+  - 元对象似乎要放在单独的文件中所以需要使用，一般编译器生成相应的代码
+  - QT的多继承还是比较保守的, 基本语义多是implements
+  - 在没有设置布局时的默认地点是在左上角开始
+  - 没有设置spacing的情况下, 使用的是默认值
+* 参考
+  - http://zetcode.com/gui/qt5/
+  - http://blog.csdn.net/colorant/article/details/5367376
+  - Qt官方文档
+

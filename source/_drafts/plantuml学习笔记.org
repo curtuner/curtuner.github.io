@@ -1,0 +1,182 @@
+#+TITLE: plantuml学习笔记
+#+DATE: 2017-09-02
+#+LAYOUT: post
+#+TAGS: plantuml,visualization
+#+CATEGORIES: plantuml
+
+* 前言
+  据说在Windows下Viso非常好用，不过这东西一到其他平台上就不能使用了，所以我一开始就没考虑。之前一直使用ditaa和graphviz绘图，一般的需求都可以满足。但是一直没有找到合适的绘制时序图的软件。直到遇到了PlantUML，它能够支持大部分在软件开发中可能需要绘制的图形，支持ditaa和dot语言。而且语法还十分简单，唯一的不足是它是使用Java编写的。另外PlantUML也提供了在线绘制的功能，如果在本机一时无法配置环境，可以打开其[[http://www.plantuml.com/plantuml/uml/SyfFKj2rKt3CoKnELR1Io4ZDoSa70000][服务器网站]]。
+  PlantUML是一个快速创建UML图形的组件，它支持绘制的图形包括：
+  1) 时序图
+  2) 用例图
+  3) 类图
+  4) 活动图
+* 实用的简单功能
+** 前言
+   由于PlantUML需要使用绘图语言，而就我看到的很多习惯在Windows编程的人都对此有些排斥。大概是不够直观，所以完整介绍PlantUML之前，我打算先把一些使用PlantUML就能简单实现的功能提供给读者。供读者选择是否继续学习PlantUML，毕竟对于已经掌握已经熟练的绘图工具的人来说，重新学习一个绘图工具性价比并不高。
+** ascii图形转化为图片
+   对于通信公司来说，可能经常要阅读各种协议的文档，为了和IETF保持一致，很多文档都用txt格式书写。比如我之前阅读过的vrrp的文档的协议格式部分是这样的：
+   [[./plantuml学习笔记/vrrp_format.png]]
+   读者也看到了，一旦我想把它插入到其他文档，像html或者word的时候就需要把它弄成图片，否则一不小心格式就被破坏了。直接截图虽然也可以，但其实我们完全可以很简单地将它导出为更加美观的图片。这原本是ditaa提供的功能，但由于PlantUML支持了ditaa，所以读者也可以完全把它当作ditaa的功能。具体的做法很简单，直接把ascii图形复制过去，ascii图形之间使用 ~@startditaa~ 和 ~@endditaa~ 包围：
+     #+BEGIN_SRC plantuml :file plantuml学习笔记/vrrp.png
+    @startditaa
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Version| Type  | Virtual Rtr ID|   Priority    | Count IP Addrs|
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Auth Type   |   Adver Int   |          Checksum             |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                         IP Address (1)                        |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                            .                                  |
+    |                            .                                  |
+    |                            .                                  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                         IP Address (n)                        |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                     Authentication Data (1)                   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                     Authentication Data (2)                   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    @endditaa
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:plantuml学习笔记/vrrp.png]]
+
+** 绘制活动图
+   活动图是编写软件文档的时候常常要绘制的，就我的绘制经验来说，绘制这类图形的问题是，程序逻辑往往是线性描述的，而活动图不是，绘制的过程中首要的往往是解决这个矛盾。所幸PlantUML提供的语法让我们能够使用简单的用贴近程序逻辑的格式来描述活动图：
+   #+BEGIN_SRC plantuml :file plantuml学习笔记/activity.png 
+     @startuml
+     start
+     :Hello world;
+     :This is on defined on
+     serval **line**;
+
+     if (Graphviz installed?) then (yes)
+     :process all;
+     else (no)
+     :process only;
+     endif
+
+     repeat
+      :read data;
+      :generate diagrams;
+     repeat while (more data?)
+
+     end
+     @enduml
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:plantuml学习笔记/activity.png]]
+
+   #+BEGIN_SRC plantuml :file plantuml学习笔记/activity_main.png 
+     @startuml
+     start
+     :建立四个监控线程;
+     repeat
+	  :sleep 1秒;
+	  :同步配置信息;
+     repeat while()
+     @enduml
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:plantuml学习笔记/activity_main.png]]
+
+   #+BEGIN_SRC plantuml :file plantuml学习笔记/activity_main.png 
+     @startuml
+     node “监控线程组” {
+	  [CPU使用率监控线程]
+	  [内存使用率监控线程]
+	  [连接数监控线程]
+	  [接口流量监控线程]
+     }
+
+     [配置管理线程] ..> [CPU使用率监控线程]
+     [配置管理线程] ..> [内存使用率监控线程]
+     [配置管理线程] ..> [连接数监控线程]
+     [配置管理线程] ..> [接口流量监控线程]
+     @enduml
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:plantuml学习笔记/activity_main.png]]
+
+** 简单时序图绘制
+   先绘制一下TCP三次握手的时序图，
+   #+BEGIN_SRC plantuml :file plantuml学习笔记/tcp_seq.png
+     @startuml
+     note over 客户, 服务器
+     CLOSED
+     end note
+
+     客户 -> 服务器: SYN J
+     note left: 主动打开 SYN_SENT
+     ...
+
+     客户 <- 服务器: SYN K, ack J+1
+     note right: SYN_RCVD
+     ...
+
+     客户 -> 服务器: ack K+1
+     note left: ESTABLISHED
+     ...
+
+     note over 客户, 服务器
+     ESTABLISHED
+     end note
+
+
+     @enduml
+   #+END_SRC
+   
+   #+RESULTS:
+   [[file:plantuml学习笔记/tcp_seq.png]]
+   嘛，虽然绘图语言很简单，但效果好像有点欠缺，比如线不能倾斜，其他的都好。偷懒的时候可以使用。
+
+* 描述数据结构
+  其实这原本属于Graphviz的功能，但PlantUML既然也支持，就不再分开讲了。不过它使用的依旧是和PlantUML不同的一个描述语言：
+  #+BEGIN_SRC plantuml :file plantuml学习笔记/dot1.png 
+  @startpan
+  #+END_SRC
+* 描述算法
+  #+BEGIN_SRC plantuml :file plantuml学习笔记/algo.png 
+    start px
+    :接收包;
+
+    if (包所属策略源ip的是否在黑名单中？) then(是)
+       :包被丢弃;
+    else (否)
+       :包被接收，
+       更新并发连接数;
+       if (当前并发连接数达到阈值) then(是)
+	  :在黑名单建立相应策略源ip的的表项;
+       else(否)
+       endif
+    endif
+
+    end
+  #+END_SRC
+  
+  先看包的处理过程，看看鼠绘汉化
+  #+RESULTS:
+  [[file:plantuml学习笔记/algo.png]]
+
+* 让Emacs的org-mode支持plantuml
+  先在配置文件中加入如下配置。
+  #+BEGIN_SRC emacs-lisp
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     '(;; other Babel languages
+       (plantuml . t)))
+ 
+    (setq org-plantuml-jar-path
+	  (expand-file-name "/path/to/plantuml.jar"))
+  #+END_SRC
+  之后还需要安装两个插件：
+  1) plantuml-mode
+  2) plantuml-flycheck
+* 参考
+  - [[http://www.cnblogs.com/yangwen0228/p/6825560.html][在Emacs中使用plantuml画UML图]]
+

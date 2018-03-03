@@ -1,0 +1,16 @@
+#+TITLE: linux sysfs的使用
+#+DATE: 2017-03-31
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* 概述
+  sysfs是一个虚拟文件系统，主要提供了同一访问设备的接口。它把原本属于procfs的关于设备的部分独立出来，以device tree的形式来呈现。/sys/devices表示所有系统知晓的设备，其它子树表示了设备的驱动程序，为了表示它们之间的关系，要使用符号链接。sysfs是建立在内核统一设备模型之上。实际上sysfs只是开发同一设备模型的一个副产品。
+* FAQ
+** PCI总线设备和USB总线设备的关系
+   一般CPU能直接控制PCI总线设备，USB总线设备是以PCI设备的形式借入PCI总线的。
+* 思考
+  一切皆文件只不过是提供一个同一的接口而已
+* 参考文献
+  - [[https://www.ibm.com/developerworks/cn/linux/l-cn-sysfs/][sysfs内容的问题]]
+  - [[https://zh.wikipedia.org/wiki/Sysfs][sysfs wiki]]

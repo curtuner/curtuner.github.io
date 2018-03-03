@@ -1,0 +1,17 @@
+#+TITLE: 编码
+#+DATE: 2017-03-24
+#+LAYOUT: post
+#+TAGS: 编码
+#+CATEGORIES: 编码
+
+* Unicode及其编码
+  Unicode是一套标准，包括字符集、编码方案等。Unicode联盟将各种字符收录为统一的字符集（Universal Coded Character Set, UCS），每个字符映射一个整数码点。
+** utf-8 流行的原因
+   1) 以字节为编码单元，没有字节序的问题
+   2) 每个ASCII字符只需要一个字节存储
+   3) 如果程序原来以字节方式存储字符，理论上不需要特别改动就可以处理UTF-8的数据
+* FAQ
+** 码点是什么？
+   Unicode同一字符集的每个字符都会映射到一个整数码点，范围是0x0 - 0x10ffff
+** UTF是什么？
+   Uncode转换格式，存储码点的方式。

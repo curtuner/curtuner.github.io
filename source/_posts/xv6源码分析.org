@@ -1,0 +1,539 @@
+#+TITLE: xv6源码分析
+#+DATE: 2017-08-02
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* 前言
+  xv6的一个麻烦的点是它支持多核处理器，所以代码要比一般的简单的操作系统项目要麻烦。
+* xv6源码获取
+  #+BEGIN_SRC sh
+  git clone https://github.com/mit-pdos/xv6-public.git xv6
+  #+END_SRC
+* TODO xv6源码结构
+** TODO 内核
+** TODO 用户态程序
+   - cat.c
+   - date.c
+* TODO 多核的符号引用（似乎是通过段机制）
+* 物理地址空间
+  虽然有页机制掩盖了物理地址，但是物理地址也不是杂乱无章的。物理地址按低地址到高地址分成三个部分：
+* 自旋锁的实现
+  使用一个锁变量，不同的运行实体通过读取该变量来判断是否使用某个资源。看描述就知道这个锁变量满足了引起竞态条件的所有条件，一般的解决方案是使用x86提供的特殊指令xchg：
+  #+BEGIN_SRC C
+    static inline uint
+    xchg(volatile uint *addr, uint newval)
+    {
+      uint result;
+
+      // The + in "+m" denotes a read-modify-write operand.
+      asm volatile("lock; xchgl %0, %1" :
+		   "+m" (*addr), "=a" (result) :
+		   "1" (newval) :
+		   "cc");
+      return result;
+    }
+  #+END_SRC
+  lock前缀保证了多处理器系统中的某个处理器能独立使用共享内存，这里lock前缀不是必要的，xchg默认会设置lock信号。由于锁变量只是内存，所以主要的难点在于获取锁和释放锁的过程。这里先观察xv6中的实现：
+  #+BEGIN_SRC C
+    // Acquire the lock.
+    // Loops (spins) until the lock is acquired.
+    // Holding a lock for a long time may cause
+    // other CPUs to waste time spinning to acquire it.
+    void
+    acquire(struct spinlock *lk)
+    {
+      pushcli(); // disable interrupts to avoid deadlock.
+      if(holding(lk))
+	panic("acquire");
+
+      // The xchg is atomic.
+      while(xchg(&lk->locked, 1) != 0)
+	;
+
+      // Tell the C compiler and the processor to not move loads or stores
+      // past this point, to ensure that the critical section's memory
+      // references happen after the lock is acquired.
+      __sync_synchronize();
+
+      // Record info about lock acquisition for debugging.
+      lk->cpu = cpu;
+      getcallerpcs(&lk, lk->pcs);
+    }
+    
+  #+END_SRC
+  自旋锁采用的是忙等待的策略来获得锁，while的那一行是主要的逻辑。释放锁只有写入的操作，所以不需要考虑太多，直接用mov写入一个0即可。自旋锁的自旋描述的是获取锁的控制流不断试探的行为。
+* TODO 多核CPU的理解
+* 内核写入内存后的启动流程
+** 开启分页机制
+   分页机制是操作系统，
+* 不同模块的分析
+** 代码
+   - bootasm.S
+   - bootmain.c
+** 系统初始化
+*** BIOS
+    计算机上电之后，第一条指令执行ROM中的BIOS，进行硬件自检，并读取第一个扇区，将其放入0x7c00处，一般情况下这就是bootloader。
+*** 设置A20地址线
+*** 内核的初始化
+    
+* 编译结果和调试
+  我使用的是qemu来调试内核代码，所以编译的指令是：
+  #+BEGIN_SRC sh
+  make qemu
+  #+END_SRC
+  观察xv6的Makefile可以看到：
+  #+BEGIN_SRC makefile
+  QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
+  $(QEMU) -serial mon:stdio $(QEMUOPTS)a
+  #+END_SRC
+  所以我们要生成的文件是fs.img和xv6.img，一个是根文件系统，而另一个是内核镜像。先讨论内核镜像，即先分析xv6.img
+  #+BEGIN_SRC makefile
+    xv6.img: bootblock kernel fs.img
+	    dd if=/dev/zero of=xv6.img count=10000
+	    dd if=bootblock of=xv6.img conv=notrunc
+	    dd if=kernel of=xv6.img seek=1 conv=notrunc
+  #+END_SRC
+  第一条指令相当有建立一个磁盘，大小是5120000字节。第二条指令是将bootblock写入虚拟磁盘的第一个扇区中。第三条指令代表跳过一个扇区后写入内核文件。
+  xv6是直接使用第一个扇区的程序作为bootloader的：
+  #+BEGIN_SRC makefile
+    bootblock: bootasm.S bootmain.c
+	    $(CC) $(CFLAGS) -fno-pic -O -nostdinc -I. -c bootmain.c
+	    $(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c bootasm.S
+	    $(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
+	    $(OBJDUMP) -S bootblock.o > bootblock.asm
+	    $(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
+	    ./sign.pl bootblock
+  #+END_SRC
+  从以上指令可以看出bootasm.S和bootmain共同定义了bootloader。
+
+* TODO 异常和中断
+** 概念探究
+  对异常和中断的概念往往比较容易混乱，所以先收集一下概念。首先是Intel的文档的内容：
+  #+BEGIN_QUOTE
+  The processor provides two mechanisms for interrupting program execution, interrupts and exceptions:
+  • An interrupt is an asynchronous event that is typically triggered by an I/O device.
+  • An exception is a synchronous event that is generated when the processor detects one or more predefined conditions while executing an instruction. The IA-32 architecture specifies three classes of exceptions: faults, traps, and aborts.
+  #+END_QUOTE
+  这是比较权威的解释了，按这个解释中断和异常都提供了打断程序运行的能力，中断是指由设备产生的异步事件，而异常是在处理器运行某个指令时探测到某些条件后产生的同步事件，异常分成了三种：故障、陷阱和终止。
+  之后再对比一下，《深入理解计算机系统》，果然不大一样，也难怪一直混淆了。《深入理解计算机系统》中对于异常的定义是：
+  #+BEGIN_QUOTE
+  异常（execption）是控制流中的突变，用来响应处理其状态的某些变化。
+  #+END_QUOTE
+  这里对异常的定义是把它当打断程序运行的事件，必Intel的定义更广，它把异常又分成了4种：中断、故障、陷阱和终止。所以两种定义没有本质的区别！
+  最后再来看看xv6文档的定义：
+  #+BEGIN_QUOTE
+  术语 exception 指产生中断的非法程序操作,例如除以0,尝试访问 PTE 不存在的内存等等。术语 interrupt 指硬件产生的希望引起操作系统注意的信号。
+  #+END_QUOTE
+  显然这xv6也采用Intel的定义，但表述还是模糊了一点。既然暂时还是和Intel的处理器打交道，我还是决定使用Intel
+** 系统调用
+   系统调用是通过产生异常实现的，一般情况下，系统调用的中断号是64，在xv6中是用宏T_SYSCALL。系统调用也叫陷阱
+* TODO 中断向量表和中断描述符表的区别
+  在内存中
+* 调度
+** 引言
+  多核CPU共享一个进程表，进程表可变，且读写是分开的，所以会造成竞争条件。这里一般的想法是用代价较小的锁，要不可能就要不断生成新的进程表了。
+** swtch分析
+   swtch是切换线程时必须使用的程序：
+   #+BEGIN_SRC asm
+     # Context switch
+     #
+     #   void swtch(struct context **old, struct context *new);
+     # 
+     # Save current register context in old
+     # and then load register context from new.
+
+     .globl swtch
+     swtch:
+       movl 4(%esp), %eax
+       movl 8(%esp), %edx
+
+       # Save old callee-save registers
+       pushl %ebp
+       pushl %ebx
+       pushl %esi
+       pushl %edi
+
+       # Switch stacks
+       movl %esp, (%eax)
+       movl %edx, %esp
+
+       # Load new callee-save registers
+       popl %edi
+       popl %esi
+       popl %ebx
+       popl %ebp
+       ret
+   #+END_SRC
+   该函数是内核线程调用的，用于保存内核线程自身的上下文并切换到另一个内核线程。这个函数可以和一般的函数的汇编代码对比，可以发现这个汇编程序的一开始并没有保存%ebp的值来建立一个帧，原因是这个函数并不需要返回，在保存了内核线程的%eip和被调用者保存寄存器后就可以切换到另一个程序了，ret时返回地址已经和调用时不同了。通过改变%esp来改变返回地址，这算是一个对初学者来说比较巧妙的做法。这个程序页暗示，内核线程的栈在切换后是一直保留在内存中的。swtch的第一个参数的含义也就明了了，是一个proc实例的context字段的地址。context其实是内核线程栈的栈顶地址
+   #+BEGIN_SRC C
+     struct context {
+       uint edi;
+       uint esi;
+       uint ebx;
+       uint ebp;
+       uint eip;
+     };
+     enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+     // Per-process state
+     struct proc {
+       uint sz;                     // Size of process memory (bytes)
+       pde_t* pgdir;                // Page table
+       char *kstack;                // Bottom of kernel stack for this process
+       enum procstate state;        // Process state
+       int pid;                     // Process ID
+       struct proc *parent;         // Parent process
+       struct trapframe *tf;        // Trap frame for current syscall
+       struct context *context;     // swtch() here to run process
+       void *chan;                  // If non-zero, sleeping on chan
+       int killed;                  // If non-zero, have been killed
+       struct file *ofile[NOFILE];  // Open files
+       struct inode *cwd;           // Current directory
+       char name[16];               // Process name (debugging)
+     };
+   #+END_SRC
+** scheduler分析
+   scheduler是xv6进程调度的核心代码，它是永远不会返回的函数。xv6的实现代码是：
+   #+BEGIN_SRC C
+     //PAGEBREAK: 42
+     // Per-CPU process scheduler.
+     // Each CPU calls scheduler() after setting itself up.
+     // Scheduler never returns.  It loops, doing:
+     //  - choose a process to run
+     //  - swtch to start running that process
+     //  - eventually that process transfers control
+     //      via swtch back to the scheduler.
+     void
+     scheduler(void)
+     {
+       struct proc *p;
+
+       for(;;){
+	 // Enable interrupts on this processor.
+	 sti();
+
+	 // Loop over process table looking for process to run.
+	 acquire(&ptable.lock);
+	 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	   if(p->state != RUNNABLE)
+	     continue;
+
+	   // Switch to chosen process.  It is the process's job
+	   // to release ptable.lock and then reacquire it
+	   // before jumping back to us.
+	   proc = p;
+	   switchuvm(p);
+	   p->state = RUNNING;
+	   swtch(&cpu->scheduler, p->context);
+	   switchkvm();
+
+	   // Process is done running for now.
+	   // It should have changed its p->state before coming back.
+	   proc = 0;
+	 }
+	 release(&ptable.lock);
+       }
+     }
+   #+END_SRC
+   可以看到，这个调度器其实很简单，只是不断重复地遍历进程表，直到看到一个RUNNABLE的进程项，这是首次适配算法。中间使用了swtch，这是之后再次进入到scheduler的起点，也就是说进程切换之前关键的三步是：
+   #+BEGIN_SRC C
+		proc = p;
+		switchuvm(p);
+		p->state = RUNNING;
+   #+END_SRC
+   将全局的变量proc赋值为当前将要运行的进程数据结构，之后调用switchuvm()，所以接下来在分析switchuvm()：
+   #+BEGIN_SRC C
+     void
+     switchuvm(struct proc *p)
+     {
+       if(p == 0)
+	 panic("switchuvm: no process");
+       if(p->kstack == 0)
+	 panic("switchuvm: no kstack");
+       if(p->pgdir == 0)
+	 panic("switchuvm: no pgdir");
+
+       pushcli();
+       cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
+       cpu->gdt[SEG_TSS].s = 0;
+       cpu->ts.ss0 = SEG_KDATA << 3;
+       cpu->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
+       // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
+       // forbids I/O instructions (e.g., inb and outb) from user space
+       cpu->ts.iomb = (ushort) 0xFFFF;
+       ltr(SEG_TSS << 3);
+       lcr3(V2P(p->pgdir));  // switch to process's address space
+       popcli();
+     }
+
+   #+END_SRC
+   从函数名就知道主要是切换虚拟地址空间的
+* 进程调度
+  进程是一个抽象概念，它让一个程序可以假设它独占一台机器。进程向程序提供独立的内存空间和CPU。对于进程间的通信看作是不同机器的通信其实是最自然的一种做法，这也是进程间通信使用。
+  通常我们为进程提供一个独占处理器的假象，而处理器的数目其实是有限的，所以这里同内存一样也是使用有限的资源来模拟大量的资源的一种做法。这里的资源有限不是处理器速度的有限，而是每个处理器核心一次只能处理一个控制流。进程独占处理器的抽象其实只要保证它的行为和中断运行的行为效果是相同的即可。所以这其实页取决域进程的定义，不可过于爆漏资源。一个进程独占处理器和内存资源主要通过进程调度器、内存分配其、页表来实现的。
+  实现处理器的多路复用有几个难点：
+  1) 普通的上下文切换
+  2) 上下文切换如何透明化
+  3) 如何避免多核处理器的切换问题
+  4) 如何释放占用的内存和资源
+  另外，进程的协作可以降低软件编写的复杂度。所以IPC机制的实现也十分重要。
+* TODO xv6和Linux的进程定义的区别
+  #+BEGIN_SRC C
+    struct proc {
+      uint sz;                     // Size of process memory (bytes)
+      pde_t* pgdir;                // Page table 
+      char *kstack;                // Bottom of kernel stack for this process
+      enum procstate state;        // Process state
+      int pid;                     // Process ID
+      struct proc *parent;         // Parent process
+      struct trapframe *tf;        // Trap frame for current syscall
+      struct context *context;     // swtch() here to run process
+      void *chan;                  // If non-zero, sleeping on chan
+      int killed;                  // If non-zero, have been killed
+      struct file *ofile[NOFILE];  // Open files
+      struct inode *cwd;           // Current directory
+      char name[16];               // Process name (debugging)
+    };
+  #+END_SRC
+  需要对所有进程进行处理时需要考虑
+  首先是进程标识，进程名、pid，用于定位进程，kill 一个进程时可以通过进程来。构成集合的结构，一般的集合数据结构，parent 字段代表这是一个树形结构或者链表型结构。进程的运行信息字段包括sz，pgdir,kstack, state tf context
+  
+* TODO x86的寄存器
+ 由于任务切换时要保留CPU大部分寄存器的值，所以对于寄存器还是需要有总体的了解。寄存器分成了几种：
+  - 标志寄存器
+  - 内存管理寄存器（GDTR、LDTR、IDTR和TR）
+  - 控制寄存器（CR0、CR1、CR2、CR3）
+  - 通用寄存器
+  - 段寄存器
+  - 程序指针
+* 用户空间和内核空间
+  它们指的是操作系统的运行模式，内核空间中可以执行系统级ISA，并且可以有自己的地址空间
+* 任务管理
+** 概述
+  任务由两个部分组成：
+  - 任务执行空间
+  - 任务状态段（TSS）
+  TSS管理任务执行空间，任务执行空间包括代码段、数据段、堆栈段，虽然在Linux中只是走一个过场，主要是权限的管理
+  如果操作系统使用了处理器提供的特权级保护机制，那么就需要为每个特权级提供独立的堆栈空间。
+  一般任务的切换直接影响的寄存器状态是寄存器TR和CR3（如果使用了页机制，一般会使用）。这里的任务管理是处理器提供的，也可以用软件实现，就是不知效率如何。现代Linux似乎没有依赖x86的任务管理功能，只是稍微用到而已。需要注意的是返回信息是保存在切换后的任务执行空间中的。
+  似乎xv6开始就对任务切换功能不是很在意了。
+** 任务寄存器（TR）
+   TR存放着16位的段寄存器以及当前任务TSS段的整个描述符（作为缓存），访问TR的指令是LTR和STR指令，其中LTR一般只是在系统初始化时使用。
+* 思考
+  - Linux 有很多复杂的结构体，但实际上处理结构体的复杂度未必有多高，每个处理程序可能只是处理有限的字段，对大的处理复杂度可以根据最复杂的处理程序而定。
+  - 进程调度需要多少字段
+  - 这里处理集合的算法又是一个类别
+  - 如何表示集合，有哪些集合数据结构，
+  - 段寄存器的指是否是不变的
+  - 锁就实现的方式来看属于系统资源一级的东西。模块化的一个基本手段是函数，不幸的是函数调用链是在一个进程中的。所以每个函数都可以拥有锁。相当域有增加了不固定的全局资源，编程难度有进一步增加了。函数副作用太大。
+* TODO 文件系统
+** 前言
+   这里的文件系统自然指xv6磁盘文件系统，它解决了几个问题：
+   1) 设计的磁盘上的数据结构，用于表示目录树和文件，记录每个文件的数据块以及磁盘上哪些空间是空闲的。
+   2) 崩溃恢复（这个一般的想法是要有日志来保证操作是原子性）
+   3) 支持在并发访问是保持一致性（大概要用锁）
+   4) 磁盘读写速度过慢（使用缓存加速）
+   xv6将实现分成了6层：
+   [[./xv6源码分析/xv6_fs.png]]
+   每一层分别实现，xv6采用自底向上的分析方法。所以这里我也想从底层的代码开始阅读。
+** 块缓冲层
+   作为缓冲层最基本的当然是缓冲区和磁盘数据的交换了。首先了解对于缓冲区的数据结构如何，这个在代码中只有一处：
+   #+BEGIN_SRC C
+     struct {
+       struct spinlock lock;
+       struct buf buf[NBUF];
+
+       // Linked list of all buffers, through prev/next.
+       // head.next is most recently used.
+       struct buf head;
+     } bcache;
+   #+END_SRC
+   缓冲的结构体只使用一次，所以没必要命名，同时可以看到这是一个全局的结构体变量，所以缓冲区在内核固定的（静态的）数据段中。这种实现的话要增加缓存的大小就得在编译内核时修改宏的值，不知道其他的文件系统是否有其他做法。从bcache可以看到代码，除了同步使用了锁以外就是head成员比较特别，大约可以估计使用的是下次适配的做法。所以要点还在buf的定义上:
+   #+BEGIN_SRC C
+     #define BSIZE 512  // block size
+
+     struct buf {
+       int flags;
+       uint dev;
+       uint blockno;
+       struct sleeplock lock;
+       uint refcnt;
+       struct buf *prev; // LRU cache list
+       struct buf *next;
+       struct buf *qnext; // disk queue
+       uchar data[BSIZE];
+     };
+
+     #define B_VALID 0x2  // buffer has been read from disk
+     #define B_DIRTY 0x4  // buffer needs to be written to disk
+   #+END_SRC
+   磁盘块的数据存储在data成员中，其他的都是管理的数据。这里flags只用到了两个位，留下其他位估计是方便扩展。dev是设备号，这意味者即使有几个磁盘也只是使用同一个缓冲区。refcnt用于引用计数，对于资源的释放这是常用的做法，之后的三个buf指针，目前还看不出作用。lock则表示这个块是否被其他进程使用。实际上lock这个锁是避免把代码简化的关键，否则处理起来是很麻烦的。
+   那么可以开始看bread的代码了，涉及到了bget()的实现：
+   #+BEGIN_SRC C
+     // Return a locked buf with the contents of the indicated block.
+     struct buf*
+     bread(uint dev, uint blockno)
+     {
+       struct buf *b;
+
+       b = bget(dev, blockno);
+       if(!(b->flags & B_VALID)) {
+	 iderw(b);
+       }
+       return b;
+     }
+
+     // Look through buffer cache for block on device dev.
+     // If not found, allocate a buffer.
+     // In either case, return locked buffer.
+     static struct buf*
+     bget(uint dev, uint blockno)
+     {
+       struct buf *b;
+
+       acquire(&bcache.lock);
+
+       // Is the block already cached?
+       for(b = bcache.head.next; 
+#include "types.h"
+#include "defs.h"
+#include "param.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "buf.h"
+
+struct {
+  struct spinlock lock;
+  struct buf buf[NBUF];
+
+  // Linked list of all buffers, through prev/next.
+  // head.next is most recently used.
+  struct buf head;
+} bcache;
+
+void
+binit(void)
+{
+  struct buf *b;
+
+  initlock(&bcache.lock, "bcache");
+
+//PAGEBREAK!
+  // Create linked list of buffers
+  bcache.head.prev = &bcache.head;
+  bcache.head.next = &bcache.head;
+  for(b = bcache.buf; b < bcache.buf+NBUF; b++){
+    b->next = bcache.head.next;
+    b->prev = &bcache.head;
+    initsleeplock(&b->lock, "buffer");
+    bcache.head.next->prev = b;
+    bcache.head.next = b;
+  }
+}
+
+// Look through buffer cache for block on device dev.
+// If not found, allocate a buffer.
+// In either case, return locked buffer.
+static struct buf*
+bget(uint dev, uint blockno)
+{
+  struct buf *b;
+
+  acquire(&bcache.lock);b != &bcache.head; b = b->next){
+	 if(b->dev == dev && b->blockno == blockno){
+	   b->refcnt++;
+	   release(&bcache.lock);
+	   acquiresleep(&b->lock);
+	   return b;
+	 }
+       }
+
+       // Not cached; recycle some unused buffer and clean buffer
+       // "clean" because B_DIRTY and not locked means log.c
+       // hasn't yet committed the changes to the buffer.
+       for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
+	 if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
+	   b->dev = dev;
+	   b->blockno = blockno;
+	   b->flags = 0;
+	   b->refcnt = 1;
+	   release(&bcache.lock);
+	   acquiresleep(&b->lock);
+	   return b;
+	 }
+       }
+       panic("bget: no buffers");
+     }
+   #+END_SRC
+* 磁盘高速缓存
+  磁盘高速缓机制存把磁盘上的一些数据保留在RAM中
+* 零散
+  - cli是通过清除IF位来屏蔽中断
+  - x86提供了分页和分段机制，所以地址有三种类型，虚拟地址、线性地址和物理地址。在xv6中，除了每个CPU独立的数据有非0的基址意外，其他的如内核数据段、代码段一般都是从基址0开始的，这样大大简化的地址操作的程序的编程。所以一般我们只需要考虑分页的地址映射而已。
+  - 加载内核时是没有loader的所以我们要自己利用elf格式手动加载内核。
+  - 进程的地址空间的控制并不再进程的数据结构中，而是在每次切换进程时，改变cr0的物理地址。
+  - 分页机制下，物理地址空间被分为一个个页帧，所以如果只是索引叶帧的话只需要20位地址而已。cr0指向页目录表的基址，页目录每一项用20位指向一个子页表，由于一个页目录项指向的页表只有4k所以也是使用20位就可以了，其他位可以作为控制位。
+  - 所有CPU核心共用一个进程表
+  - allocproc在进程表中找到一个标记为UNUSED的槽位
+  - 进程有内核线程的用户线程，每个线程要有栈
+  - 看linux源码时要注意组成内核的部分一般是不会出现在根文件系统中的，也就是自己要理清内核和通常意义上的操作系统的区别。
+  - 进程表是用于调度一个计算机中所有的进程，所以用一个表统一管理
+  - 进程的线程一般是交替使用内核栈和用户栈的
+  - 第一个程序是操作系统内核来运行的，但是还是使用了对于操作系统来说比较统一的方法。
+  - 在x64中一般是先call压如pc的返回地址，再由被调用者管理栈帧。但这其实也不是必须的，实际上调用者管理也是可以的，当然我觉得还是前者的汇编代码好看一点。当然参数还是调用者来管理
+  - x64之后寄存器多了，函数参数可以直接保存在寄存器里了
+  - x86中的leave是一个语法糖，被调用者用于栈帧管理。等价于movl %ebp %esp; popl %ebp
+  - x86中调用者保存寄存器是被过程认为是易失，所以被调用者可以直接使用，如果要要使用则要求调用者保存。被调用者保存的寄存器包括ebx, edi和esi，其中esp和ebp是必须要维护的。
+  - Unix的一大优点是大部分资源都可以用文件来表示
+  - 文件操作是对设备操作的组织和抽象，设备操作则是文件操作最终实现。
+  - 层次的划分取决于使用了使用了哪些元语，依赖哪些实现
+  - 抽象的结果是我们可以忽略哪些东西了
+  - 传统的设备文件包括块设备和字符设备，之后设备变得越来越复杂，像网络接口这种不能确定属于那一类的设备就被独立出来了。所以一般区分设备包括块设备，字符设备和网络接口。
+  - 由于设备的多样性，设备驱动是一个需要正本专著讨论的大课题
+  - PCI已经成为通用的标准总线，
+  - 通过修改EFLAG的IF位可以屏蔽中断，但只能屏蔽硬件中断
+  - 时钟中断由时钟芯片产生，可能是每100ms产生一个中断
+  - int指令类似域call，但做的事情更多，对于的返回指令是iret
+  - 任务段指定了栈
+  - 当处理器有多个级别时，Unix/Linux只使用两个级别，而处理器最少有两个级别
+** 可安装模块（module）
+   moule可以在系统运行时动态安装和拆卸的内核软件，实际上它的作用不限于设备驱动
+** 将内核频文件载入
+   C函数需要使用栈，所以bootloader先用0x7c00作为栈的开始，
+** bootloader的理解
+   Intel的CPU一开始运行在实模式之上，为了进入保护模式我们要在实模式中构建保护模式的运行环境，最后通过一个jmp正式进入保护模式。内核运行在保护模式中，页机制对于保护模式而言不是必须的，第一步先要启动的是段机制。
+** TODO i386的内存管理
+   CPU对于内存管理其实设定了不少,
+** 虚拟地址空间
+   x86其实提供了二维的地址空间，不过Linux似乎没有使用。
+** 段寄存器
+   段寄存器有6个，一个程序一般至少需要3个CS、DS和SS，还有三个辅助的数据段寄存器ES、FS、GS。另外段寄存器还包含不可见的缓存来保存段描述符。对于描述符表做改动后立刻重新加载6个段寄存器
+** 利用有限的资源模拟无限的资源
+** types.h
+   基本系统数据类型。
+** TODO 不去使用递归锁的原因（理解不够）
+   两个原因：
+   - 这会加大相关函数的副作用，加大编程的复杂性
+   - 另一个原因是不变量可能被破坏，因为C函数本身无法从函数定义了解相关的实现。
+** 门描述符
+   门描述符描述的是控制转移的入口点，它是通向另一段代码的门，可实现任务内特权级的变换和任务间的切换。任务
+** 任务调度（x86特有）
+   任务是处理器可以分配调度、执行和挂起的一个工作单元。x86提供了一种机制来保存任务状态，算是x86特有的。估计不是通用的。任务切换操作不会把任何信息压入堆栈中，处理器的状态信息都被保存在内存中称为任务状态段的（TSS,Task State Segment）的数据结构中。当前指令的特权级CPL在保存在%cs（代码段寄存器）中。
+** 有哪些中断处理程序没有关闭中断呢
+* 思考
+  - 复杂的顺序结构和复杂的逻辑结构
+  - 操作系统最重要的是进程管理，内存管理，文件系统。一些操作系统（嵌入式）可能没有文件系统也可能没有进程管理，进程管理和文件系统必须至少有一个才能
+  - 对于硬件如磁盘来说，有不少动作，但是这些动作的模式却不多，硬件抽象的目的在于提取所有的模式，保证其内容都是完全的
+  - xv6中比较重要的结构体是proc，里面应该包含一个进程运行下去的所有内容。计算机是一状态机，根据当前的状态，计算出下一个状态，并具有可以完全丢弃当前状态的无后效性。proc设计的要点也在此。关键在于足够支持下一步的计算。
+  - 处理器提供的很多功能或者指令本身没有特别东西，尤其是描述符的含义，其实可以自己去想象如何编写程序来处理，这样也就没有问题了，
+  - 构建内核时先从可以运行开始，之后在增加功能，抽象的顺序大概就能理清了。
+  - 有了一定感觉后把程序从开机到运行，并能够运行程序执行系统调用的做的事情理清。
+* 参考
+  - [[http://blog.csdn.net/qq_25426415/article/category/6684908][xv6源码分析]]
+  - [[http://www.cnblogs.com/chengxuyuancc/archive/2013/04/17/3026920.html][地址空间分布]]
+  - xv6文档
+  - [[https://segmentfault.com/a/1190000008308764][xv6中存储cpu和进程信息的技巧]]
+  - Intel 64 and IA-32 Architectures Developer's Manual: Vol.1
+  - Linux内核完全注释

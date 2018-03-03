@@ -1,0 +1,175 @@
+#+TITLE: Python的web框架概述
+#+DATE: 2017-12-07
+#+LAYOUT: post
+#+TAGS: Python, Web, Network
+#+CATEGORIES: Web
+
+* 前言
+  本文主要简单介绍一下Python的web框架的一些知识，不会介绍具体的实现，最多讲讲原理。考虑到大家对于Python不熟悉，所以会夹杂一些Python特性的讲解。最后还会讲讲一些关于服务器编程的知识。
+  这篇文章的话题主要是网关，
+  Web一般是World Wide Web的简称，对于用户来说，Web是一个由巨大的全球范围的文档或者说Web页面集合组成的。Web开发目的也就是提供给用户各种Web页面，这些Web页面可以包含各种资源的。现代的Web页面提供了Web客户端和服务器通信的能力。也就是说Web能提供的资源已经从过去的静态资源编程了今天各种动态资源了。如何利用Web提供丰富的资源是本文的主题。
+* HTTP
+  HTTP（Hypertext Transfer Protocol）是在World Wide Web上进行通信的协议，它定义了传输Web页面的方式。讲到Web就不得不讲到HTTP，当然这个协议大家或多或少都懂一些，所以本文不会讲它的标准。现代Web开发受到HTTP的深刻影响，所以要理解Web开发也可以从HTTP入手。最早的HTTP主要用来传输静态的Web页面，之后随着Web的流行，人们开始希望能Web服务器能提供更多的资源，包括数据库、动态页面这些。同时，人们还希望能用一个统一的方式来访问Internet的资源，无论这个资源是什么类型，这个方法自然就是我们原先访问静态页面的方法了，也就是HTTP。
+  图片...
+  那么该如何做到这一点呢？接下来要介绍的就是这些技术。这之中我们会进一步了解HTTP协议。
+* WSGI
+  应用对象是个接受两个参数的简单callable对象。
+  所以应用看作对象，而且是可调用的。
+* uwsgi
+  uWSGI是一个Web服务器，实现了WSGI协议、uwsgi、http
+  http://www.nowamagic.net/academy/detail/1330328
+* Tornado 
+  tornado可以粗略分成四个部分：
+  - 一个Web框架（包括被继承来创建Web应用的RequestHandler类，以及其他相关的类）
+  - HTTP客户端和服务器的实现（HTTPServer和AsyncHTTPClient）
+  - 一个异步网络库
+  - 一个协程库（tornado.gen），允许用更加直接的方式编写异步代码。
+  
+  Tornado默认不是使用WSGI，但作为Python应用，所以其实最终会作为一个参数。
+** RequestHandler
+   如何从传入的http请求中获得信息？一般是使用get_argument，以及
+** 模板 
+   Tornado模板是被python表达式和控制语句标记的简单文本文件
+   语言
+   tornado的模块系统和其他模块系统相比，优点是可以在if和for中使用所有的表达式
+   扩展模板的方法是： Tornado通过extends和block替代。如果我们现在编写的模板只是基于原来的模板的扩展，则要使用  extends "main.html" 。使新文件扩展为
+   直接使用子模板就可以了
+   如果模板渲染错误，算是5号错误
+   模板中可以设定block的默认值
+** UI模块
+   UI模块是封装模块中包含的标记、样式以及行为的可复用组件。可以被一个或者多个模板复用，模块本身继承自Tornado的UIModule类的简单Python类，并定义了一个render方法。一个模板通过 module Foo(...)  标签引用一个模块时，Tornado的模块引擎调用模块的render类。然后用模板引擎调用。render模块当然返回的是字符串。UI模块可以嵌入自己的JavaScript和CSS文件，或者指定额外包含的JavaScript和CSS文件。
+** 静态内容
+   对于静态内容的处理应该有别于动态内容，像样式表和、JavaScript文件等。
+   static_url，它生成的url，
+   
+** 思考
+   说白了组件有几样
+** 应用的组件
+   模板，为模板服务的UI模块，其他的静态文件。
+** 数据库
+   以MongoDB作为数据库，并通过pymongo作为驱动来MongoDB。它和Python可以比较好地配合。可以不用预订以数据结构，适合原型开发。MongoHQ是MongoDB的服务器。
+*** 使用PyMongo来进行MongoDB来操作
+    PyMongo是一个简单的包装MongoDB客户端API的Python库。启动一个连接：
+    #+BEGIN_SRC python
+      import pymongo
+
+      client = pymongo.MongoClient('localhost', 27017)
+    #+END_SRC
+    一个MongoDB服务器可以包含任意数量的数据库，而Connection对象。一个数据库可以拥有多个集合。
+** websocket
+   websocket这个协议还定义了浏览器使用websocket的接口
+*** tornado.websocketHandler
+    要处理的事件有五个：
+    - open：连接建立
+    - on_message: 接受到信息
+    - on_close：连接关闭
+    - select_subprotocol：选择一个建立在Websocket上的子协议
+    - on_ping：收到一个ping帧
+** 安全问题
+   Tornado在设计的时候就考虑了很多常见的http安全漏洞，比如跨站点请求伪造
+* Django的信号机制
+  
+* 异步Web应用
+  Tornado最受关注的内容是其异步取得和提供内容的能力。程序运行过程
+* 表单的使用
+  表单会通过POST发送数据,
+  表单发送的数据会被django处理成字典，之后传入request参数中。
+* Django
+  Django最早开发来发布新闻内容
+  - 一个Web应用会需要一个url配置
+  - 一个优点是，Django全部使用.py文件来配置，这样就可以直接使用Python的解析器。
+  - Django的model本质上是一个数据库层
+  - 会有一个工程目录1
+  - django模板处理的依旧是Python对象
+  
+  一个Django工程主要包括了应用和相应的设置。
+  算起来Django对于http方法的处理其实不是很好，如果方法不对，或者字段不对，那么
+** admin
+   
+** model
+   是数据最简单、最本质的东西，包含就你存储的最基本的字段和行为，需要注意的是行为。model使用Python的class来描述。使用类变量来描述数据库字段。django会根据这些来建立schema。
+   改变数据库schema也是在Python代码中
+   和数据库的交互过程需要大量的错误处理
+   一个django model是用一个Python类来表示的
+   对于model的处理还是必要的
+   
+   每个model对应数据库中的一个表，最基本的概念是：
+   - 每个model都是继承自django.db.models.Model的子类
+   - model的每个属性，代表数据库的一个字段
+   - django提供了操作和查询数据库的api
+   
+   默认情况下，会加一个字段id，表示行数
+   同时如果如何有联系，还会自动生成联系字段
+** views
+   每个view都至少要做两件事之一：
+   - 返回一个HttpResponse对象
+   - 返回一个异常，这样就有异常的状态码
+** url解析
+   include可以用于应用其他的url配置（在其他应用的urls.py中）
+** 实例
+*** 一个
+** class-based views
+   a view is a callable which takes a request and returns a response
+   
+** 信号
+   Django提供了信号分配器，允许解耦的应用在框架的其它地方发生操作时会被通知到。信号允许特定的sender通知一组receiver某些操作已经发生。这是一种对象间通信机制
+* 身份问题
+  http通过cookie来识别用户的身份，所以对于每个http请求，要通过tornado来处理cookie问题。Tornado在
+* TODO 基准测试
+* Python2
+  Python迭代器，
+* csrf
+* 部署
+** Tornado作为服务器，利用WSGI和Flask框架实例沟通
+   
+* Web客户端和Web服务器全双工连接
+* 对WebSocket的支持
+  WebSocket的最新规范是RFC 6455[fn:10:之前还有很多草案，但都没有得到大部分主要浏览器的支持，所以不去理会。]，支持它的最低浏览器版本分别是：
+  - IE 10
+  - Firefox(PC) 11
+  - Firefox(Android) 11
+  - Chrome(PC, Mobile) 16
+  - Safari(Mac, IOS) 6
+  - Opera(PC, Mobile) 12.10
+  - Android浏览器 4.4
+
+  有些浏览器的WebSocket功能不是默认打开的，这点需要注意。另一方面支持WebSocket的Web服务器包括：
+  - php - http://code.google.com/p/phpwebsocket/
+  - jetty - http://jetty.codehaus.org/jetty/（版本7开始支持websocket）[失效連結]
+  - netty - http://www.jboss.org/netty
+  - ruby - http://github.com/gimite/web-socket-ruby
+  - Kaazing - https://web.archive.org/web/20100923224709/http://www.kaazing.org/confluence/display/KAAZING/Home
+  - Tomcat - http://tomcat.apache.org/（7.0.27支持websocket，建议用tomcat8，7.0.27中的接口已经过时）
+  - WebLogic - http://www.oracle.com/us/products/middleware/cloud-app-foundation/weblogic/overview/index.html（12.1.2開始支持）[失效連結]
+  - node.js - https://github.com/Worlize/WebSocket-Node
+  - node.js - http://socket.io
+  - nginx - http://nginx.com/
+  - mojolicious - http://mojolicio.us/
+  - python - https://github.com/abourget/gevent-socketio
+  - Django - https://github.com/stephenmcd/django-socketio
+  - erlang - https://github.com/ninenines/cowboy.git
+
+* 关于HTTP协议和其他协议的转化
+* 框架
+  - 一般对于一个框架来说，所有的应用最终会有一个“框架应用”来统一管理，框架应用主要负责路由，建立和实际应用的联系。同时为了编程方便，一般实际应用还是需要有和框架沟通的方式。
+  - 数据库只要有一个服务器就足够了，也就是说对于框架来说只要框架应用连接着就足够了。
+  - 核心的问题是如何处理http的逻辑同语言的逻辑相结合
+  - django的做法是利用shortcut来减少抽象层，当然这未必是一个好方法
+  - 每个model代表一个数据库，所以如何要管理数据库要从类变量开始。
+* TODO 问题 [0%]
+  - [ ] Python模块和包
+  - [ ] ansible使用的是哪个底层库，使用的是什么协议来沟通，估计用shell
+  - [ ] web框架的任务和位置
+  - [ ] web网关的地位，与框架分离
+  - [ ] 框架、应用的区别
+  - [ ] 框架有哪些封装，不需要知道哪些
+  - [ ] 网关以资源为核心来讲解,
+  - [ ] TLS
+  - [ ] WSGI 的作用
+  - [ ] 是否限定于数据库
+  - [ ] 为什么要在templates/polls/..中
+  - [ ] django 的template不需要设置html标签吗
+* 参考
+  - [[http://www.pythondoc.com/flask/deploying/wsgi-standalone.html][把Flask部署到Tornado]]
+  - [[http://docs.pythontab.com/tornado/introduction-to-tornado/][Introduction ot Tornado]]
+  

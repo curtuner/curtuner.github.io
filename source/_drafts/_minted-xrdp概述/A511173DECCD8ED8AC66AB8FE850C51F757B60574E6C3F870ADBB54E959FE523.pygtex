@@ -1,0 +1,9 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k+kt}{int}
+\PYG{n+nf}{trans\PYGZus{}listen\PYGZus{}address}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k+kt}{char} \PYG{o}{*}\PYG{n}{port}\PYG{p}{,} \PYG{k}{const} \PYG{k+kt}{char} \PYG{o}{*}\PYG{n}{address}\PYG{p}{)}
+\PYG{p}{\PYGZob{}}
+    \PYG{c+c1}{//...}
+    \PYG{n}{g\PYGZus{}tcp\PYGZus{}set\PYGZus{}non\PYGZus{}blocking}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{sck}\PYG{p}{);}
+    \PYG{c+c1}{//...}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

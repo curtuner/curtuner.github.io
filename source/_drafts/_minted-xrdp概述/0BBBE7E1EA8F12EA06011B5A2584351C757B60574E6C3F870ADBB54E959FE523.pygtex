@@ -1,0 +1,31 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{xrdp\PYGZus{}wm\PYGZus{}key}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}wm} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k+kt}{int} \PYG{n}{device\PYGZus{}flags}\PYG{p}{,} \PYG{k+kt}{int} \PYG{n}{scan\PYGZus{}code}\PYG{p}{)}
+\PYG{p}{\PYGZob{}}
+    \PYG{c+c1}{//...}
+
+    \PYG{k}{if} \PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+	\PYG{k}{if} \PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod\PYGZus{}event} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+	\PYG{p}{\PYGZob{}}
+	    \PYG{n}{ki} \PYG{o}{=} \PYG{n}{get\PYGZus{}key\PYGZus{}info\PYGZus{}from\PYGZus{}scan\PYGZus{}code}
+		 \PYG{p}{(}\PYG{n}{device\PYGZus{}flags}\PYG{p}{,} \PYG{n}{scan\PYGZus{}code}\PYG{p}{,} \PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{keys}\PYG{p}{,} \PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{caps\PYGZus{}lock}\PYG{p}{,}
+		  \PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{num\PYGZus{}lock}\PYG{p}{,} \PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{scroll\PYGZus{}lock}\PYG{p}{,}
+		  \PYG{o}{\PYGZam{}}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{keymap}\PYG{p}{));}
+
+	    \PYG{k}{if} \PYG{p}{(}\PYG{n}{ki} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+	    \PYG{p}{\PYGZob{}}
+		\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod\PYGZus{}event}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mod}\PYG{p}{,} \PYG{n}{msg}\PYG{p}{,} \PYG{n}{ki}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{chr}\PYG{p}{,} \PYG{n}{ki}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{sym}\PYG{p}{,}
+					 \PYG{n}{scan\PYGZus{}code}\PYG{p}{,} \PYG{n}{device\PYGZus{}flags}\PYG{p}{);} \PYG{c+c1}{// 模块提供的}
+	    \PYG{p}{\PYGZcb{}}
+	\PYG{p}{\PYGZcb{}}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{k}{else} \PYG{k}{if} \PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{focused\PYGZus{}window} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+	\PYG{n}{xrdp\PYGZus{}bitmap\PYGZus{}def\PYGZus{}proc}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{focused\PYGZus{}window}\PYG{p}{,}
+			     \PYG{n}{msg}\PYG{p}{,} \PYG{n}{scan\PYGZus{}code}\PYG{p}{,} \PYG{n}{device\PYGZus{}flags}\PYG{p}{);}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{c+c1}{//...}
+
+    \PYG{k}{return} \PYG{l+m+mi}{0}\PYG{p}{;}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

@@ -1,0 +1,47 @@
+#+TITLE: Latex文档编写
+#+DATE: 2017-04-19
+#+LAYOUT: post
+#+TAGS: Latex
+#+CATEGORIES: Latex
+
+* 前言
+  Latex是不那么好学的语言，所以我认为对它的学习要以需求为导向。细节上我在FAQ中编写。正文只描述我认为最核心的内容。
+* 简单实例
+* 指令
+  - newcommand可以方便定义带可选参数的命令，其实和def类似
+* 行距
+  基线
+* 字体大小及其设置
+  小四12pt
+  四号14pt
+* 页眉、页脚、页码
+  使用fancyhdr宏包
+* 插入图片
+  在浮动体figure中插入图片，便于分页
+  \begin{figure}[ht]
+  \centering
+  \includegraphics[scale=0.5]{figures/escher1.jpg}
+  \caption{画手，埃舍尔作}
+\label{fig:escher1}
+\end{figure}
+
+* 致谢的设置
+* TODO 数学符号以及公式
+** TODO 逻辑学符号
+   - \neg 否定
+   - \land 合取
+   - \lor 析取
+   - \to 蕴含
+   - 
+* pdf合并和分割工具：PDFtk
+  暂不知道如何提取，所以可以有很多先把pdf分裂
+  #+BEGIN_SRC 
+  pdftk in.pdf burst
+  #+END_SRC
+  合并两个pdf文件
+  #+BEGIN_SRC sh
+  pdftk 1.pdf 2.pdf cat output out.pdf
+  #+END_SRC
+* FAQ
+** 在ctexart中标题默认是居中的，如何将标题改为左对齐？
+   \CTEXsetup[format={\Large\bfseries}]{section}

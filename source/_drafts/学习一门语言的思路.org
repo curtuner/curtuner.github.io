@@ -1,0 +1,8 @@
+#+TITLE: 学习一门语言的思路
+#+DATE: 2017-05-13
+#+LAYOUT: post
+#+TAGS: PL
+#+CATEGORIES: PL
+
+* TODO 类型系统
+  - [ ] 函数

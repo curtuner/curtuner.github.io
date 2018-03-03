@@ -1,0 +1,76 @@
+#+TITLE: Linux工具使用
+#+DATE: 2017-03-24
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* 编译的常识
+** 编译前的configure
+   --prefix 后指定二进制文件安装的位置
+   --
+* sed
+* samba
+* 查看日志
+  以前的Linux还在使用syslog，可惜Archlinux已经不用了，这样在程序中调用syslog会被systemd处理，使用:
+  #+BEGIN_SRC sh
+  journalctl -e
+  #+END_SRC
+  可以查看最近的syslog
+* 套接字查询
+  在Archlinux下netstat已经默认不安装了，其替代品叫ss。
+  
+* shell的常识
+** dot的使用
+   #+BEGIN_SRC sh
+     . test.sh
+   #+END_SRC
+   以上一个点加空格在相当于在当前shell进程执行该文件中的内容
+** 内置变量
+   
+** eval
+   进行两次
+** $() 和 ``
+   命令替换，等价，但前者更易查看
+** 变量替换
+*** ${}
+    变量替换，但是可以方便划定区域
+    - :=
+** 几个问题
+* Makefile
+** 前言
+   除了小项目一般很少人回去直接写Makefile，现在基本都是直接使用生成Makeifle的工具，这也是历史原因，比较Makefile在哪里都可以使用嘛。所以编程成Makefile是最好的选择。目前最好用的是CMake。
+* FHS标准
+  一个容易被现在的各大Linux入门书籍忽略的是，2012年在Fedora的主导下，根目录的/lib、/lib64、/bin、/sbin都合并到usr目录下了。这样可以方便厂商将系统资源统一放在/usr下。
+* objdump
+  默认情况下对所有的染段反汇编
+* tcpdump
+  tcpdump可以在网卡的混杂模式下抓包，这个指令的一个要点是如何过滤。
+* nmap
+** 简述
+  nmap是一个网络端口扫描程序。其主要功能是检查一组目标主机，看看在哪个TCP和UDP端口上有服务程序在监听。由于大多数网络服务都与端口号相关联，所以可以利用端口信息大体知道服务器提供的服务。
+** nmap常用的指令
+*** 扫描目标主机TCP端口
+   #+BEGIN_SRC sh
+   nmap -sT <host>
+   #+END_SRC 
+   s代表扫描的意思，T是TCP的意思，这个指令扫描目标主机的所有端口，不断尝试建立TCP连接，一旦建立连接就断开连接。
+*** 获取主机使用的操作系统的信息
+    #+BEGIN_SRC sh
+    namp -sV -O <host>
+    #+END_SRC
+* 用于和Windows交互
+** rdesktop
+   #+BEGIN_SRC sh
+   rdesktop <host_ip>
+   #+END_SRC
+* 加密工具
+** md5sum
+* gnome
+** 切换成窗口为基本元素的切换器（使用Alt-tab切换）
+   默认使用的窗口切换器是以应用为基础的，而但这样要切换窗口的话就要使用到方向键，所以可以在gnome-tweak-tool中启用扩展Alternatetab。
+* firefox
+  
+* 参考
+  [[http://mtoou.info/archlinux-lib-usrlib/][Archlinux更新日志：迁移/lib到/usr/lib]]
+   
+   

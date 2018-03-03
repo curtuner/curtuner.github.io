@@ -1,0 +1,6 @@
+#+TITLE: org-mode的GTD实现
+#+DATE: 2017-05-07
+#+LAYOUT: post
+#+TAGS: Emacs
+#+CATEGORIES: Emacs
+

@@ -1,0 +1,42 @@
+#+TITLE: Matplotlib学习笔记
+#+DATE: 2017-05-08
+#+LAYOUT: post
+#+TAGS: Python, Matplotlib, visualization
+#+CATEGORIES: Matplotlib
+
+* TODO 引言
+  pylab是Matplotlib的一个模块，不过一般用于交互时使用，提供了和Matlab类似的环境，默认导入了matplotlib、numpy等其他有用的库。如果不在交互环境下，就没必要使用。一般实验时还是有用的，不过在org-mode中价值好像又进一步降低了。
+* 初级绘制
+  先绘制简单的图，并保证能在网页上显示:
+  #+BEGIN_SRC python :results output drawer :exports both
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+
+    x = np.linspace(0, 10, 1000)
+    y = np.sin(x)
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(x, y, label="$sin(x)$", color="red", linewidth=2)
+    plt.xlabel("Time(s)")
+    plt.ylabel("Volt")
+    plt.title("函数$sin(x^2)$")
+
+    # 输出
+    pic_filename = "sin.png"
+    path = './Matplotlib学习笔记/'
+
+    plt.savefig('{}{}'.format(path, pic_filename))
+    print("#+caption: 第一幅图")
+    print("[[{}{}]]".format(path, pic_filename))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  #+caption: 第一幅图
+  [[./Matplotlib学习笔记/sin.png]]
+  :END:
+
+
+* 参考
+  - [[http://old.sebug.net/paper/books/scipydoc/index.html][Python科学计算]]

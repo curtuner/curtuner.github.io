@@ -1,0 +1,376 @@
+#+TITLE: Linux内核
+#+DATE: 2017-03-26
+#+LAYOUT: post
+#+TAGS: Linux，Linux学习指南
+#+CATEGORIES: Linux
+
+* 基本知识
+** TODO 概述
+   在讲内核之前，首先要分清操作系统和内核之间的关系。一般的操作系统教科书所讲的操作系统往往指的是内核，与我们正常所认为的操作系统不同。为了避免混淆，我使用一般点的概念，即认为操作系统包括内核以及提供基础服务的系统组件，而内核就是操作系统的核心模块。如何理解内核？在我看来Tanenbaum的解读方式最好，内核提供两种服务：一种是作为资源管理器，一种是提供一个虚拟机。前者面向系统软件程序员（如驱动和内核开发），后者面向应用软件程序员。我认为最重要的还是提供了一个虚拟机降低了编程的复杂度这一方面，虽然系统软件领域还还是必不可少，但大展拳脚的机会相对比较少。所以看待对于一般的程序员如果不是特别感兴趣，只要自顶向下来看待内核即可。实际上，很多Java程序员也只需要对Java虚拟机有足够理解即可。这也是虚拟机存在的意义，让我们不必了解太多不必要的细节。尽管如此，我们学习操作系统，大部分时间还是要花在内核的资源管理上，否则也就没必要学习内核知识了。
+   对于一般程序员而已，虚拟机和物理机没有本质的区别。我统一把它们看作虚拟机，那么内核的实现就是在虚拟机上构建另一个虚拟机的过程。这里再引入一个概念，体系结构，由接口规范和接口操纵的资源的逻辑行为来描述。而虚拟机提供一个体系结构。这样我们的目标就变成了在一个体系结构上实现另一个“等价的”体系结构。对于内核而言，一般是在指令集体系结构（ISA）上实现。所以编写内核的模块时最先要理解的是ISA提供相应的接口机器操纵资源的逻辑。
+   内核主要的模块包括内存管理、进程、文件系统。。。
+   操作系统的设计和提供的服务，计算机世界的一大矛盾是人们日益增长的性能需要和不足的硬件资源之间的矛盾。为了让计算机资源不被某些程序浪费同时可以被多人共享。操作系统有必要把程序的概念抽象出来，达到能够操控程序运行的目的。进程不是一个一开始就有的概念。照这个逻辑
+** 一个可用操作系统包括什么
+   内核的关键在于提供一个进程级别的虚拟机，我们使用的用户级ISA其实表达能力已经足够构建一个抽象层了。这是我们编写内核时容易忽略的点。
+** 内核模块
+   可在运行时加入到内核中的代码称为“模块（module）”
+** 网络模块的应用层诊断工具
+   - iputil
+   - net-tools：目前已经不用了
+   - iproute2：取代了net-tools
+** 内核接口
+   
+** Linux设备的分类
+*** 字符设备
+    能够像字节流（类似文件）一样被访问的设备。字符设备和文件的不同在于大多字符设备只能顺序访问数据通道
+*** 块设备
+    每次只能传输一个或多个完整的块
+*** 网络接口
+    一个能够和其他主机交换数据的设备，负责接受和发送数据包。在文件系统没有对应的节点
+** 内核空间和用户空间的接口
+   除了系统调用提供的接口，还可以通过虚拟文件系统和netlink套接口。sysctl和procfs，虚拟文件系统用于读写属于操作系统内核的数据
+** 内核基本结构
+   对于程序员，对硬件的操作是用ISA来描述的，为了安全和效率考虑，需要在之上建立一个虚拟机，内核是虚拟机组成的一部分。计算机的资源大体分成几类：
+   1) 存储资源，包括寄存器，RAM
+   2) 计算资源
+   3) 其他的硬件
+   内核本质是一个虚拟机，用于包装对于底层硬件的操作
+* 内核编译和安装
+  
+* TODO 源码阅读
+** 源码编译
+   在源码目录的顶层，执行以下指令：
+   #+BEGIN_SRC sh
+   make menuconfig
+   #+END_SRC
+   目的是生成.config命令，配置时有三种选择：
+   - Y：将功能编译进内核
+   - N：不将功能编译进内核
+   - M：将该功能编译成可以在需要时动态插入到内核中的模块
+** TODO 目录结构
+   - arch：同openwrt的target目录类似，包含所有的体系结构相关的代码，一般PC机使用的是arch/x86目录下的代码，它支持x86和x86_64
+   - mm：包含与体系结构无关的内存管理代码，与体系结构相关的内存管理代码位于arch/*/mm中
+   - ipc：核心进程间通信的代码
+   
+** 协议栈
+*** 套接口缓存
+    协议栈的用户接口是socket接口，网络模块最重要的数据结构是sk_buff，在TCP/IP协议栈中被二到四层的协议使用，其中的某些数据成员会在层次传递过程中变化。尽量少操作内存，是这个设计结构体的要求。
+**** sk_buff结构体的理解
+     先去
+     #+BEGIN_SRC C
+       /** 
+	,*	struct sk_buff - socket buffer
+	,*	@next: Next buffer in list
+	,*	@prev: Previous buffer in list
+	,*	@tstamp: Time we arrived/left
+	,*	@rbnode: RB tree node, alternative to next/prev for netem/tcp
+	,*	@sk: Socket we are owned by
+	,*	@dev: Device we arrived on/are leaving by
+	,*	@cb: Control buffer. Free for use by every layer. Put private vars here
+	,*	@_skb_refdst: destination entry (with norefcount bit)
+	,*	@sp: the security path, used for xfrm
+	,*	@len: Length of actual data
+	,*	@data_len: Data length
+	,*	@mac_len: Length of link layer header
+	,*	@hdr_len: writable header length of cloned skb
+	,*	@csum: Checksum (must include start/offset pair)
+	,*	@csum_start: Offset from skb->head where checksumming should start
+	,*	@csum_offset: Offset from csum_start where checksum should be stored
+	,*	@priority: Packet queueing priority
+	,*	@ignore_df: allow local fragmentation
+	,*	@cloned: Head may be cloned (check refcnt to be sure)
+	,*	@ip_summed: Driver fed us an IP checksum
+	,*	@nohdr: Payload reference only, must not modify header
+	,*	@pkt_type: Packet class
+	,*	@fclone: skbuff clone status
+	,*	@ipvs_property: skbuff is owned by ipvs
+	,*	@tc_skip_classify: do not classify packet. set by IFB device
+	,*	@tc_at_ingress: used within tc_classify to distinguish in/egress
+	,*	@tc_redirected: packet was redirected by a tc action
+	,*	@tc_from_ingress: if tc_redirected, tc_at_ingress at time of redirect
+	,*	@peeked: this packet has been seen already, so stats have been
+	,*		done for it, don't do them again
+	,*	@nf_trace: netfilter packet trace flag
+	,*	@protocol: Packet protocol from driver
+	,*	@destructor: Destruct function
+	,*	@_nfct: Associated connection, if any (with nfctinfo bits)
+	,*	@nf_bridge: Saved data about a bridged frame - see br_netfilter.c
+	,*	@skb_iif: ifindex of device we arrived on
+	,*	@tc_index: Traffic control index
+	,*	@hash: the packet hash
+	,*	@queue_mapping: Queue mapping for multiqueue devices
+	,*	@xmit_more: More SKBs are pending for this queue
+	,*	@ndisc_nodetype: router type (from link layer)
+	,*	@ooo_okay: allow the mapping of a socket to a queue to be changed
+	,*	@l4_hash: indicate hash is a canonical 4-tuple hash over transport
+	,*		ports.
+	,*	@sw_hash: indicates hash was computed in software stack
+	,*	@wifi_acked_valid: wifi_acked was set
+	,*	@wifi_acked: whether frame was acked on wifi or not
+	,*	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
+	,*	@dst_pending_confirm: need to confirm neighbour
+	 ,*	@napi_id: id of the NAPI struct this skb came from
+	,*	@secmark: security marking
+	,*	@mark: Generic packet mark
+	,*	@vlan_proto: vlan encapsulation protocol
+	,*	@vlan_tci: vlan tag control information
+	,*	@inner_protocol: Protocol (encapsulation)
+	,*	@inner_transport_header: Inner transport layer header (encapsulation)
+	,*	@inner_network_header: Network layer header (encapsulation)
+	,*	@inner_mac_header: Link layer header (encapsulation)
+	,*	@transport_header: Transport layer header
+	,*	@network_header: Network layer header
+	,*	@mac_header: Link layer header
+	,*	@tail: Tail pointer
+	,*	@end: End pointer
+	,*	@head: Head of buffer
+	,*	@data: Data head pointer
+	,*	@truesize: Buffer size
+	,*	@users: User count - see {datagram,tcp}.c
+	,*/
+
+       struct sk_buff {
+	       union {
+		       struct {
+			       /* These two members must be first. */
+			       struct sk_buff		*next;
+			       struct sk_buff		*prev;
+
+			       union {
+				       ktime_t		tstamp;
+				       struct skb_mstamp skb_mstamp;
+			       };
+		       };
+		       struct rb_node	rbnode; /* used in netem & tcp stack */
+	       };
+	       // host的传输控制块，当skb只在二层和三层转发时，值为NULL
+	       struct sock		*sk;
+
+	       union {
+		       struct net_device	*dev;
+		       /* Some protocols might use this space to store information,
+			,* while device pointer would be NULL.
+			,* UDP receive path is one user.
+			,*/
+		       unsigned long		dev_scratch;
+	       };
+	       /*
+		,* This is the control buffer. It is free to use for every
+		,* layer. Please put your private variables there. If you
+		,* want to keep them across layers you have to do a skb_clone()
+		,* first. This is owned by whoever has the skb queued ATM.
+		,*/
+	       char			cb[48] __aligned(8);
+
+	       unsigned long		_skb_refdst;
+	       void			(*destructor)(struct sk_buff *skb);
+       #ifdef CONFIG_XFRM
+	       struct	sec_path	*sp;
+       #endif
+       #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+	       unsigned long		 _nfct;
+       #endif
+       #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
+	       struct nf_bridge_info	*nf_bridge;
+       #endif
+	       unsigned int		len,// 数据部分长度
+				       data_len;
+	       __u16			mac_len, // 二层首部长度
+				       hdr_len;
+
+	       /* Following fields are _not_ copied in __copy_skb_header()
+		,* Note that queue_mapping is here mostly to fill a hole.
+		,*/
+	       kmemcheck_bitfield_begin(flags1);
+	       __u16			queue_mapping;
+
+       /* if you move cloned around you also must adapt those constants */
+       #ifdef __BIG_ENDIAN_BITFIELD
+       #define CLONED_MASK	(1 << 7)
+       #else
+       #define CLONED_MASK	1
+       #endif
+       #define CLONED_OFFSET()		offsetof(struct sk_buff, __cloned_offset)
+
+	       __u8			__cloned_offset[0];
+	       __u8			cloned:1,
+				       nohdr:1,
+				       fclone:2,
+				       peeked:1,
+				       head_frag:1,
+				       xmit_more:1,
+				       __unused:1; /* one bit hole */
+	       kmemcheck_bitfield_end(flags1);
+
+	       /* fields enclosed in headers_start/headers_end are copied
+		,* using a single memcpy() in __copy_skb_header()
+		,*/
+	       /* private: */
+	       __u32			headers_start[0];
+	       /* public: */
+
+       /* if you move pkt_type around you also must adapt those constants */
+       #ifdef __BIG_ENDIAN_BITFIELD
+       #define PKT_TYPE_MAX	(7 << 5)
+       #else
+       #define PKT_TYPE_MAX	7
+       #endif
+       #define PKT_TYPE_OFFSET()	offsetof(struct sk_buff, __pkt_type_offset)
+
+	       __u8			__pkt_type_offset[0];
+	       __u8			pkt_type:3;
+	       __u8			pfmemalloc:1;
+	       __u8			ignore_df:1;
+
+	       __u8			nf_trace:1;
+	       __u8			ip_summed:2;
+	       __u8			ooo_okay:1;
+	       __u8			l4_hash:1;
+	       __u8			sw_hash:1;
+	       __u8			wifi_acked_valid:1;
+	       __u8			wifi_acked:1;
+
+	       __u8			no_fcs:1;
+	       /* Indicates the inner headers are valid in the skbuff. */
+	       __u8			encapsulation:1;
+	       __u8			encap_hdr_csum:1;
+	       __u8			csum_valid:1;
+	       __u8			csum_complete_sw:1;
+	       __u8			csum_level:2;
+	       __u8			csum_bad:1;
+
+	       __u8			dst_pending_confirm:1;
+       #ifdef CONFIG_IPV6_NDISC_NODETYPE
+	       __u8			ndisc_nodetype:2;
+       #endif
+	       __u8			ipvs_property:1;
+	       __u8			inner_protocol_type:1;
+	       __u8			remcsum_offload:1;
+       #ifdef CONFIG_NET_SWITCHDEV
+	       __u8			offload_fwd_mark:1;
+       #endif
+       #ifdef CONFIG_NET_CLS_ACT
+	       __u8			tc_skip_classify:1;
+	       __u8			tc_at_ingress:1;
+	       __u8			tc_redirected:1;
+	       __u8			tc_from_ingress:1;
+       #endif
+
+       #ifdef CONFIG_NET_SCHED
+	       __u16			tc_index;	/* traffic control index */
+       #endif
+
+	       union {
+		       __wsum		csum;
+		       struct {
+			       __u16	csum_start;
+			       __u16	csum_offset;
+		       };
+	       };
+	       __u32			priority;
+	       int			skb_iif;
+	       __u32			hash;
+	       __be16			vlan_proto;
+	       __u16			vlan_tci;
+       #if defined(CONFIG_NET_RX_BUSY_POLL) || defined(CONFIG_XPS)
+	       union {
+		       unsigned int	napi_id;
+		       unsigned int	sender_cpu;
+	       };
+       #endif
+       #ifdef CONFIG_NETWORK_SECMARK
+	       __u32		secmark;
+       #endif
+
+	       union {
+		       __u32		mark;
+		       __u32		reserved_tailroom;
+	       };
+
+	       union {
+		       __be16		inner_protocol;
+		       __u8		inner_ipproto;
+	       };
+
+	       __u16			inner_transport_header;
+	       __u16			inner_network_header;
+	       __u16			inner_mac_header;
+
+	       __be16			protocol;
+	       __u16			transport_header;
+	       __u16			network_header;
+	       __u16			mac_header;
+
+	       /* private: */
+	       __u32			headers_end[0];
+	       /* public: */
+
+	       /* These elements must be at the end, see alloc_skb() for details.  */
+	       sk_buff_data_t		tail;
+	       sk_buff_data_t		end;
+	       unsigned char		*head,
+				       ,*data;
+	       unsigned int		truesize;
+	       atomic_t		users; // 引用计数
+       };
+     #+END_SRC
+     
+* 进程
+  进程描述符是 ~task_struct~ 类型的结构，轻量级进程之所以不叫线程，是因为它和其他进程一样都占用一个进程描述符。也就是task_struct占用独立的内存，所以内容等价性所以是否属于同一个进程要看task_struct的内容，而不是看内存地址。所以需要一个进程标识，task_stuct的pid字段已经是Linu进程的标识了。相对的，为了支持线程的概念，又增加了tgid字段表示出轻量级进程的所属线程组。一般我们使用getpid() 的时候返回的是进程的tgpid，当然这个没有什么问题。
+  进程描述符现在是存在内核栈中，位置取决于如何分配内核栈
+* 内存管理
+** 分页机制
+   分页机制负责把32位的线性地址翻译成一般我们把页面的大小一般为4K，它负责把
+* 文件系统
+** 概述
+   文件一般是指磁盘文件，而在Linux中认为凡是能产出和消耗信息的都是文件（可读可写）。类似Socket可以发送和接收信息这点来看把Socket看作文件是合理的。而文件系统的意思在不同语境下不同，这里指的是操作系统中用于管理文件和对文件进行操作的机制及其实现。
+   Linux的文件系统最早使用的是minix的文件系统，之后经过不断改进形成了Ext2文件系统
+* 虚拟文件系统
+  
+* 轻量级进程
+  LWP是一种实现多线程的方法，在Linux中指的是与其他进程共享地址空间和系统资源的进程，它是作为进程被调度的。它的私有资源一般要包括最小执行上下文和进程调度所需要的统计信息。说白了一个线程只需要执行和调度信息即可。
+* 系统调用的跟踪
+  
+* 内核提供的数据结构
+  先确定状态，之后的状态转移，除非有哪些动作是特别要求，可以方便用户，否则改变状态的动作以结构为主，那种切换能保证操作高效就用哪些，否则应该考虑换结构。
+** 双向链表
+   - 初始化宏(状态生成)：LIST_HEAD(list_name)
+   - list_add_tail(n, h)：添加
+   - list_add(n, p)：将n指向的元素插入p指向的元素之
+   - list_del(p)：删除p指向的元素
+   - list_empty(h):确定吃否是空链表
+   - 
+* 思考
+  - 抽象分为局部抽象和大局抽象，命名空间的问题确实巨大，有接口是否爆漏的问题。
+  - 为什么使用指针呢？很多时候是为了动态绑定增加灵活性。
+  - 驱动的符号不应是全局的，这样会污染命名空间。
+  - 在大的程序中，尤其是内核对于符号空间的控制要比较注意。内核还是留下了不少符号的
+  - 为什么会有僵死进程呢？我们需要进程终止的信息，但是处理必须依托一个执行流，Linux的执行流依托域进程，所以必须有进程主动处理。
+  - 从用户态切换到内核态之后进程的栈是空的，另外内核栈的空间很小只有7KB多一点。
+  - 我们重视讨论多态，其实宏是否使用宏来实现有时并不必要。本来C语言的类型检查就很弱了。
+* TODO 问题 [0%]
+  - [ ] Linux 4.0管理进程集合的方式已经不是进程链表了，那么是什么呢？
+  - [ ] 用宏来作为内部实现是否可行
+* FAQ
+** 文件系统节点是什么？
+   文件系统可以表示成一棵树，一般内部节点是目录，叶节点是文件
+** .ko文件是什么类型的文件？
+   是Linux内核模块文件，一般是驱动程序
+** 接口和设备的关系？
+   接口一般都有独立的接口芯片，所以接口设备就是接口
+** 什么是系统调用？
+   指运行在用户态的程序向操作系统内核要求需要更高权限的服务
+** 文件系统和内核的关系？
+   Linux内核实现了虚拟文件系统（VFS），VFS可以看作一个抽象层，所以特定的文件系统如ext4、ntfs和btrfs等都是可以看作VFS接口的某个具体实现。
+** 一个模块涉及什么？
+   一个模块其实是一个抽象层，一开始我们要考虑的是模块的抽象对象，抽象对象就是什么呢？一般的抽象有自底向上，自顶向下也有，两种的使用范围不同。一般自顶向下是建模的技巧
+** 内核什么时候处于被动阶段？
+   开始运行用户程序之后，
+** 有集中陷入内核的机制和方式？
+** 主设备号和次设备号
+** 编写内核的难点在哪里？ 
+   内核为内核提供了完整的内核的机制。真正的困难在于理解设备并最大化其性能。
+* 参考
+  - 《Linux内核源码情景分析》
+  - 《程序设计语言--实践之路》
+   

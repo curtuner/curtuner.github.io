@@ -1,0 +1,8 @@
+#+TITLE: 思考
+#+DATE: 2017-05-26
+#+LAYOUT: post
+#+TAGS: 杂物
+#+CATEGORIES: 杂物
+
+* 设计
+  - 用C编程时和用idris编程时表达的计算模型有何不同

@@ -1,0 +1,118 @@
+#+TITLE: JavaScript入门
+#+DATE: 2018-01-04
+#+LAYOUT: post
+#+TAGS: JavaScript
+#+CATEGORIES: JavaScript
+
+* 前言
+  JavaScript留下了很多坑，旧式的JavaScript还是无法和Python对比的，所以学JavaScript需要注意很多细节，避免错误的使用方式。
+* 基础
+** 变量
+   变量名可以用_、数字、字母和$的组合，但是，不能以数字开头。值得注意的是$开头的标识符也是一个变量名，这和很多语言不同，变量名当然也可以是中文。
+   早期的JavaScript并不强制使用var，而不使用var声明的变量会被统一作为全局变量。开启strict模式才会阻止这种行为。
+** 对象
+   一种无序集合数据类型，由若干键值对组成。JavaScript有基本数据类型和对象之分，所以就没法做到一切皆对象了。。。
+** 函数
+   函数和Python有些类似，没有返回值的时候就会自动返回一个undefined，而Python是None。函数也是对象。
+   对于函数对象上的设计要比Python要强，有两种函数定义的形式，但其中一种只是语法糖。
+   JavaScript的作用域规则也是以函数作为作用域规则的基本组成
+   和Python不同，JavaScript的函数定义是以lambda表达式为基础的，主要是为了处理静态信息。
+   需要注意的是变量名和函数的绑定方式其实和Python类似，但是JavaScript的undefined值把本来出现异常的情况给吃掉了。
+   由于这个规则，在函数内部定义变量的时候，所有变量统一放在函数开始的地方
+   不再任何函数内部定义的变量就是全局作用域。实际上，JavaScript的一个默认全局对象叫做window，
+   - 全局作用域的变量实际上被绑定到window这个全局对象，成为它的一个属性
+** 方法
+** 局部作用域
+    JavaScript的作用域一般指函数内部，和Python一样早期不支持块级作用域。ES6引入了let来支持块级作用域。
+* 浏览器
+** window
+   window不仅充当全局作用域，而且表示浏览器窗口。innerWidth和innerHeight属性以获取浏览器窗口的内部宽度和高度。内部宽高是指除去菜单栏、工具栏、边框等占位元素后，用于显示网页的净宽高。当然如果我们把浏览器窗口缩小，就会改变这个值。
+   还有outerWidth和outerHeight属性，可以获取整个窗口的大小。
+   需要注意的是属性上各个浏览器其实有所不同，如IE就不能这样。
+** navigator
+** screen
+   表示屏幕的大小，这个是本机屏幕的意思
+** DOM
+   HTML文档被浏览器解析后就是一个DOM（Document Object Model）树，所以使用JavaScript操作HTML就是操作一棵树。一般通过html获取DOM节点，
+   innerHTML和innerText的功能有些类似，其中innerText是不可以改变HTML结构的,也不会显示html相关结构的内容。所以可以防备XSS攻击。
+** JavaScript的运行
+   JavaScript在浏览器中是单线程执行的，如果要事件驱动，不能设置多个事件循环，所以只能通过异步执行来完成。一旦JavaScript代码被执行完成，就只能依赖出发事件来执行JavaScript来完成。浏览器接受到事件之后会在对应的DOM节点上出发相应的事件，如果该节点绑定了对应的事件，函数就会制动调用。不同浏览器绑定事件的方式不一样，所以使用jQuery来写代码
+** 表单
+   
+** 常量
+   ES6之前JavaScript和Python差不多，并不支持常量。新引入的const关键字和let都是块级别的作用域
+
+** 解构赋值
+   和Python一样了，可以简化代码，细节之后在考虑
+* 全局对象
+  所有模块都可以调用的对象就是全局对象，在浏览器中全局对象称为window，而在Node.js中全局对象叫global。所有全局对象都是global对象的属性，像console和process都是全局对象的一个属性，这些属性是可以直接调用的。所以顶层函数的定义其实会成为global对象的属性。
+  JavaScript只有一个全局作用域，所有变量如果在当前作用域没有被找到，就会向上查找，如果找不到则报ReferenceError错误。
+  浏览器中不同的js文件其实也在同一个作用域中，也就是同一个全局对象中。这个会造成变量名的重复定义，造成不可预知的覆盖。减少错误的方式是把自己的所有变量都绑定到一个全局变量中。这点比Python差一些，Python的模块也是一个名字空间。
+  由于一个页面中js文件的属于一个全局作用域，为了避免冲突，每个模块都会建一个全局变量来管理所有的变量，依次来解决没有模块的问题。很多JavaScript库都是这么做
+* 动态添加css
+* 对象
+** 前言
+   JavaScript每创建一个对象就会设置一个原型，指向其原型对象。使用obj.xxx，引擎会先到当前对象上查找属性，如果没有找到，就在其原型对象上查找，直到Object.prototype，如果没有找到就返回undefined。又再次掩盖了错误。由于这个查找过程也是需要花费时间的，所以注意不要搞到继承链太长。
+** 函数对象
+   Function.prototype定义了apply方法。所有函数都可以调用apply()方法。
+** 构造函数
+   构造函数只要设定对象的属性就足够了。
+* 注意点
+  - JavaScript的比较运算符“==”是会进行自动类型转换的，所以有很多诡异的结果，如flase == 0这个表达式是true。有一个好点的比较方法是“===”，当然这个方法也不算多好，在类型不一致的情况下会返回false，一致之后再比较。所以应该使用===比较。还有个比较特别的是NaN，NaN==NaN返回false，isNaN(NaN)才会返回true。
+  - undefined仅仅在判断函数参数是否传递的情况下有用。
+  - JavaScript对象都是由键值对组成的无序集合
+  - JavaScript的字符串是不可变的，所以改变字符串的方法本身不会改变原有的字符串。
+  - undefined的作用其实约束了一种设计情况，var arr=[]
+  - Array没有越界检查，这个其实不算好
+  - JavaScript有不暴露错误的倾向，直接暴露为定义的行为，也算是一种管理
+  - if else 默认加{}来包围，其实就是为了防止之后加的时候忘掉{}
+  - else if 本质上就是语法糖，不过其实没有谈论的意义，
+  - JavaScript把null、undefined、0、NaN和''视为false，其他值一律视为true
+  - Array也是对象，每个元素的索引视为对象的属性，属性自然就是字符串
+  - 使用for还是用while只是看逻辑是否清晰而已，不过其实差别每那么大。
+  - JavaScript 是动态类型，可以自由添加属性和删除属性。
+  - this指向当前对象，可以通过它来访问当前对象的属性或者方法。this是在运行时决定的，只取决于运行时的对象
+  - 可以把任意JavaScript对象转化成JSON格式，所以JSON必须支持所有的JavaScipt的数据类型。这个转化的过程称为序列化和反序列化
+  - 任何时候不要使用history对象
+  - 用表单提交密码的时候，一般传输的是用户口令的MD5.
+  - apply方法
+  - 
+* skewer
+  这是
+* AJAX
+  Asynchronous JavaScript and XML，也就是使用JavaScript执行异步网络请求。
+* Canvas
+  Canvas是HTML5新增的组件，提供了一块画布，在上面绘制各种图形。过去是交给Flash来实现的，至此可以直接使用JavaScript。Canvas可以绘制2D也可以绘制3D，但是3D需要依靠webgl。
+  getContext提供了对象，提供了用于绘图的方法和属性
+* XSS攻击
+* form
+  form提供了submit方法，可以提交数据。
+  form里面的元素，如果没有name属性是不会被提交的。检查用户的输入是否出错是在前端
+** 上传文件
+   form提供了<input type="file">来上传文件。JavaScript对于这个控件的value是不能操作的，也无法获得路径。
+   JS一般只是对于文件扩展名做检查而已。由于无法操作文件，所以如果网页要对文件做处理就不要借助Flash这种东西。到了HTML5就好多了。
+* Node.js
+** npm
+   node.js的包管理器，一般在安装Node.js的时候也会附带。意味Node.js package manager。
+* jQuery
+  目前jQuery有1.x和2.x两个主要版本，区别在于2.x移除了对古老的IE 6、7、8的支持，因此2.x的代码更精简。选择哪个版本主要取决于你是否想支持IE 6~8。jQuery只是一个jquery-xxx.js文件，使用时在网页引入就可以了。$是一个合法变量名，是Query的别名。
+* AngularJS
+  Angular2.0之前的版本叫做AngularJS。1.x使用的是引入AngularJS的js文件到网页中去的方法。解决的问题也是和DOM的交互问题。AngularJS 是一个 JavaScript 框架。它是一个以 JavaScript 编写的库。AngularJS 是以一个 JavaScript 文件形式发布的，可通过 script 标签添加到网页中。
+  ng-app 指令定义一个 AngularJS 应用程序。
+
+  ng-model 指令把元素值（比如输入域的值）绑定到应用程序。
+
+  ng-bind 指令把应用程序数据绑定到 HTML 视图。
+* 关于浏览器模块化编程
+  minify-maven-plugin
+* 类
+  JavaScript类的实现通过原型继承，严格来说早期没有类机制。说白了就是使用原型对象来直接作为类来使用。
+* 思考
+  - 几乎所有语言都有JSON库
+  
+* 问题 minify-maven-plugin
+  
+* 参考
+  - [[https://segmentfault.com/q/1010000000144415][<script src="url"> 中的url的"//"是不是相当于"http://"?]]
+  - [[https://www.zhihu.com/question/30284269][许多js框架或js库的min版本是怎么做出来的？]]
+  - [[https://code.jquery.com/][jquery源码网站（包含各个版本）]]

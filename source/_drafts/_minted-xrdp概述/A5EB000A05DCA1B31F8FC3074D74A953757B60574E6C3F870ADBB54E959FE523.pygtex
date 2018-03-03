@@ -1,0 +1,61 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}listen\PYGZus{}main\PYGZus{}loop}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}listen} \PYG{o}{*}\PYG{n}{self}\PYG{p}{)} \PYG{p}{\PYGZob{}}
+    \PYG{c+c1}{//初始化...}
+    \PYG{k}{while} \PYG{p}{(}\PYG{n}{cont}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+	  \PYG{c+cm}{/* build the wait obj list */}
+	  \PYG{n}{robjs\PYGZus{}count} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{;}
+	  \PYG{n}{robjs}\PYG{p}{[}\PYG{n}{robjs\PYGZus{}count}\PYG{o}{++}\PYG{p}{]} \PYG{o}{=} \PYG{n}{term\PYGZus{}obj}\PYG{p}{;}
+	  \PYG{n}{robjs}\PYG{p}{[}\PYG{n}{robjs\PYGZus{}count}\PYG{o}{++}\PYG{p}{]} \PYG{o}{=} \PYG{n}{sync\PYGZus{}obj}\PYG{p}{;}
+	  \PYG{n}{robjs}\PYG{p}{[}\PYG{n}{robjs\PYGZus{}count}\PYG{o}{++}\PYG{p}{]} \PYG{o}{=} \PYG{n}{done\PYGZus{}obj}\PYG{p}{;}
+	  \PYG{n}{timeout} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{;}
+
+	  \PYG{c+cm}{/* if (self\PYGZhy{}\PYGZgt{}listen\PYGZus{}trans != 0) */}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{k}{if} \PYG{p}{(}\PYG{n}{trans\PYGZus{}get\PYGZus{}wait\PYGZus{}objs}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{listen\PYGZus{}trans}\PYG{p}{,} \PYG{n}{robjs}\PYG{p}{,}
+				      \PYG{o}{\PYGZam{}}\PYG{n}{robjs\PYGZus{}count}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+	      \PYG{p}{\PYGZob{}}
+		  \PYG{n}{log\PYGZus{}message}\PYG{p}{(}\PYG{n}{LOG\PYGZus{}LEVEL\PYGZus{}ERROR}\PYG{p}{,}\PYG{l+s}{\PYGZdq{}Listening socket is in wrong state, \PYGZdq{}}
+			    \PYG{l+s}{\PYGZdq{}terminating listener\PYGZdq{}}\PYG{p}{);}
+		  \PYG{k}{break}\PYG{p}{;}
+	      \PYG{p}{\PYGZcb{}}
+	  \PYG{p}{\PYGZcb{}} \PYG{c+c1}{// 这里设置了所有的文件描述符，加起来一般有5个}
+
+	  \PYG{c+cm}{/* wait \PYGZhy{} timeout \PYGZhy{}1 means wait indefinitely*/}
+
+	  \PYG{k}{if} \PYG{p}{(}\PYG{n}{g\PYGZus{}obj\PYGZus{}wait}\PYG{p}{(}\PYG{n}{robjs}\PYG{p}{,} \PYG{n}{robjs\PYGZus{}count}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{timeout}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{c+cm}{/* error, should not get here */}
+	      \PYG{n}{g\PYGZus{}sleep}\PYG{p}{(}\PYG{l+m+mi}{100}\PYG{p}{);}
+	  \PYG{p}{\PYGZcb{}}
+
+	  \PYG{c+c1}{// dispatch相应的处理流程}
+	  \PYG{k}{if} \PYG{p}{(}\PYG{n}{g\PYGZus{}is\PYGZus{}wait\PYGZus{}obj\PYGZus{}set}\PYG{p}{(}\PYG{n}{term\PYGZus{}obj}\PYG{p}{))} \PYG{c+cm}{/* termination called */}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{k}{break}\PYG{p}{;}
+	  \PYG{p}{\PYGZcb{}}
+
+	  \PYG{c+cm}{/* some function must be processed by this thread */}
+	  \PYG{k}{if} \PYG{p}{(}\PYG{n}{g\PYGZus{}is\PYGZus{}wait\PYGZus{}obj\PYGZus{}set}\PYG{p}{(}\PYG{n}{sync\PYGZus{}obj}\PYG{p}{))}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{n}{g\PYGZus{}reset\PYGZus{}wait\PYGZus{}obj}\PYG{p}{(}\PYG{n}{sync\PYGZus{}obj}\PYG{p}{);}
+	      \PYG{n}{g\PYGZus{}process\PYGZus{}waiting\PYGZus{}function}\PYG{p}{();} \PYG{c+cm}{/* run the function */}
+	  \PYG{p}{\PYGZcb{}}
+
+	  \PYG{k}{if} \PYG{p}{(}\PYG{n}{g\PYGZus{}is\PYGZus{}wait\PYGZus{}obj\PYGZus{}set}\PYG{p}{(}\PYG{n}{done\PYGZus{}obj}\PYG{p}{))} \PYG{c+cm}{/* pro\PYGZus{}done\PYGZus{}event */}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{n}{g\PYGZus{}reset\PYGZus{}wait\PYGZus{}obj}\PYG{p}{(}\PYG{n}{done\PYGZus{}obj}\PYG{p}{);}
+	      \PYG{c+cm}{/* a process has died remove it from lists*/}
+	      \PYG{n}{xrdp\PYGZus{}listen\PYGZus{}delete\PYGZus{}done\PYGZus{}pro}\PYG{p}{(}\PYG{n}{self}\PYG{p}{);} \PYG{c+c1}{// 一个process即可以是读也可以时写}
+	  \PYG{p}{\PYGZcb{}}
+
+	  \PYG{c+cm}{/* Run the callback when accept() returns a new socket*/}
+	  \PYG{k}{if} \PYG{p}{(}\PYG{n}{trans\PYGZus{}check\PYGZus{}wait\PYGZus{}objs}\PYG{p}{(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{listen\PYGZus{}trans}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}
+	  \PYG{p}{\PYGZob{}}
+	      \PYG{k}{break}\PYG{p}{;}
+	  \PYG{p}{\PYGZcb{}}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{c+c1}{//...}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

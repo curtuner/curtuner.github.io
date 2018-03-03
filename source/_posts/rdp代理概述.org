@@ -1,0 +1,507 @@
+#+TITLE: rdp代理概述
+#+DATE: 2017-11-15
+#+LAYOUT: post
+#+AUTHOR: Curtuner
+#+TAGS: Network
+#+CATEGORIES: Network
+#+OPTIONS: ^:nil
+
+* 前言
+  本文只是一点学习的记录，对RDP协议数据的解析是实现对RDP会话的监控和审计的基础。本文的重点在对于RDP协议的介绍，以及xrdp和rdpproxy代理服务器模型的介绍。这是进一步开发RDP代理功能和堡垒机功能的基础。最后是一些个人对于堡垒机功能的开发的总结。
+* RDP协议简单分析
+** RDP概述
+   RDP协议（Remote Desktop Protocol），是微软开发的私有协议[fn:1:严格来说最早舒畅国际电信联盟设计的，后被微软收购]，让用户可以通过网络连接上远程的主机，并提供相应的图形界面。使用的时候，要求远程主机启动了RDP服务器，而本地使用RDP客户端连接。RDP默认会监听本机UDP和TCP端口3389[fn:2:xrdp默认只监听TCP端口]。目前大多数主流的操作系统都有RDP客户端软件，而RDP服务器软件少一点，但是Unix和OS X下也是有的。目前RDP协议已经出到10.0版[fn:3:历史版本包括4.0、5.0、5.1、5.2、6.0、6.1、7.0、8.0、8.1、10.0]了。值得一提的是早期微软并不公开RDP协议，所以可以看到网络上一些早期的对RDP协议的研究都是破解的结果。目前连接远程Windows主机一般使用RDP来实现，所以如果堡垒机管理的机器中包括Windows主机，就有必要实现RDP代理功能。相对的，Linux虽然目前也可以运行RDP服务器，但是Linux的图形界面一直不是很稳定（这几年更是处于从X协议转向Wayland的过程，而Wayland暂时不支持RDP），所以对于Linux来说支持RDP倒不是很要紧。
+** RDP协议栈和实现分析
+*** RDP协议层次
+**** 概述
+    RDP协议是建立在TCP协议之上的，和其他网络协议一样，RDP协议也采用分层的结构。其层次结构如下图：
+    
+    [[./rdp代理概述/rdp.png]]
+    
+    可以看到由上到下依次是：
+    1) 功能数据层（RDP层）
+    2) 加密解密层（SEC层）
+    3) 虚拟通道层（MCS层）
+    4) ISO数据层（ISO层）
+    5) TCP层
+    这个结构暗示了RDP软件需要实现协议栈[fn:3:对于实现rdp代理，协议栈的实现是必不可少的]的来处理RDP协议的数据，事实也是如此。同时我们也可以看到这个协议栈和TCP/IP协议栈不同，它是遵循ISO七层模型的。
+
+    标准的TCP/IP协议栈一样，在传输RDP数据包时，一个协议层会对来自上层的数据进行包装，由于RDP协议层次从下到上依次是ISO层、MCS层、SEC层、RDP层，RDP数据包实际上是由TCP数据依次封装上ISO层数据头、MCS数据头、SEC数据头、RDP数据头的。下面对每层的数据进行简要的分析。
+**** ISO层
+     ISO层使用了X.224协议，这个协议属于传输层的协议，但该协议只是ITU-T（国际电信联盟标准组）的建议，实际上它是借助TCP协议来实现。就提供的网络服务来说，两者基本是一致的，不同的是，TCP协议提供可靠面向连接 *流传输* 服务，而X.224协议要求提供可靠的面向连接的 *数据包传输* 服务。所以X.224协议使用了叫TKPT header的数据块对TCP流进行了定界。RDP数据包通过RDP协议栈后都会被TKPT头包裹。
+**** MCS层
+     MCS（MultiPoint-Communication-Service），使用了T.122/T.125协议实现了多点通信，其目的是创建一个域并将用户加入该域，同时为域开辟不同的通道，以传输不同类型的数据。
+**** SEC层
+     加密解密层，用于对RDP层数据进行加密，保证了通信的安全性，但也影响了RDP代理的实现，这个之后讲到。
+**** RDP层
+     RDP层规定了连接初始化的顺序和格式、鼠标/键盘等输入信息的格式，图形命令的格式、某些常用通道数据的格式等，也是我们最为关注的一层，RDP的的主要作用是由这层定义的。也是我们理解RDP协议的关键。
+*** xrdp协议栈代码简要分析
+    RDP协议是加密协议，从前面可以看到RDP层的下层就是SEC层，所以为了获得能够处理的数据至少要让数据通过SEC层的接口解密，同时这也意味着代理服务器的两条连接会保持两个密钥。所以是无法直接通过TCP连接直接转发的，RDP代理服务器必须使用协议栈来组包和解包。需要注意的是作者对于协议栈有一些优化，本文不会涉及到。
+
+    xrdp的协议栈的实现位于其xrdp源码的libxrdp目录中，首先看一下libxrdp/libxrdp.h文件中各层对象的定义：
+    #+BEGIN_SRC C
+      /* iso */
+      struct xrdp_iso
+      {
+          struct xrdp_mcs *mcs_layer; /* owner */
+          int rdpNegData; /* bool */
+          int requestedProtocol;
+          int selectedProtocol;
+          int failureCode;
+          struct trans *trans;
+      };
+
+      /* mcs */
+      struct xrdp_mcs
+      {
+          struct xrdp_sec *sec_layer; /* owner */
+          struct xrdp_iso *iso_layer;
+          int userid;
+          int chanid;
+          struct stream *client_mcs_data;
+          struct stream *server_mcs_data;
+          struct list *channel_list;
+      };
+
+      /* sec */
+      struct xrdp_sec
+      {
+          struct xrdp_rdp *rdp_layer; /* owner */
+          struct xrdp_mcs *mcs_layer;
+          struct xrdp_fastpath *fastpath_layer;
+          struct xrdp_channel *chan_layer;
+          char server_random[32];
+          char client_random[256];
+          char client_crypt_random[256 + 8]; /* 64 + 8, 256 + 8 */
+          struct stream client_mcs_data;
+          struct stream server_mcs_data;
+          int decrypt_use_count;
+          int encrypt_use_count;
+          char decrypt_key[16];
+          char encrypt_key[16];
+          char decrypt_update_key[16];
+          char encrypt_update_key[16];
+          int crypt_method;
+          int rc4_key_len; /* 8 = 40 bit, 16 = 128 bit */
+          int crypt_level;
+          char sign_key[16];
+          void *decrypt_rc4_info;
+          void *encrypt_rc4_info;
+          char pub_exp[4];
+          char pub_mod[256];
+          char pub_sig[64];
+          char pri_exp[256];
+          int rsa_key_bytes; /* 64 or 256 , 0 = no rdp security */
+          char fips_encrypt_key[24];
+          char fips_decrypt_key[24];
+          char fips_sign_key[20];
+          void *encrypt_fips_info;
+          void *decrypt_fips_info;
+          void *sign_fips_info;
+          int is_security_header_present; /* boolean */
+      };
+
+      /* rdp */
+      struct xrdp_rdp
+      {
+          struct xrdp_session *session;
+          struct xrdp_sec *sec_layer;
+          int share_id;
+          int mcs_channel;
+          struct xrdp_client_info client_info;
+          struct xrdp_mppc_enc *mppc_enc;
+          void *rfx_enc;
+      };
+    #+END_SRC
+    以上每个结构体对应一个协议栈的通信层，可以看到这几个结构体的定义存在依赖，和协议栈层次顺序差不多，如下：
+    [[]]
+    接下来在看一下相关的接口（为了节省篇幅，所以只列出iso层）：
+    #+BEGIN_SRC C
+          /* xrdp_iso.c */
+      struct xrdp_iso *
+      xrdp_iso_create(struct xrdp_mcs *owner, struct trans *trans);
+      void
+      xrdp_iso_delete(struct xrdp_iso *self);
+      int
+      xrdp_iso_init(struct xrdp_iso *self, struct stream *s);
+      int
+      xrdp_iso_recv(struct xrdp_iso *self, struct stream *s);
+      int
+      xrdp_iso_send(struct xrdp_iso *self, struct stream *s);
+      int
+      xrdp_iso_incoming(struct xrdp_iso *self);
+      int
+      xrdp_iso_detect_tpkt(struct xrdp_iso *self, struct stream *s);
+    #+END_SRC
+    学过Python就知道这个和Python成员函数定义的接口相似，因为这个xrdp使用了面向对象的技巧来组织程序。可以看到这里存在构造函数（xrdp_iso_create）、析构函数（xrdp_iso_delete）、各个成员函数，self参数让他们的运行必须依赖于相应的对象（也就是前面的结构体实例）。
+    作者这么做大大提高了代码的模块化，使其更加容易和RDP协议的概念向对应。
+**** RDP协议栈接口
+     #+BEGIN_SRC C
+       /* xrdp_rdp.c */
+       struct xrdp_rdp *
+       xrdp_rdp_create(struct xrdp_session *session, struct trans *trans);
+       void
+       xrdp_rdp_delete(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_init(struct xrdp_rdp *self, struct stream *s);
+       int
+       xrdp_rdp_init_data(struct xrdp_rdp *self, struct stream *s);
+       int
+       xrdp_rdp_get_fastpath_bytes(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_init_fastpath(struct xrdp_rdp *self, struct stream *s);
+       int
+       xrdp_rdp_recv(struct xrdp_rdp *self, struct stream *s, int *code);
+       int
+       xrdp_rdp_send(struct xrdp_rdp *self, struct stream *s, int pdu_type);
+       int
+       xrdp_rdp_send_data(struct xrdp_rdp *self, struct stream *s,
+                          int data_pdu_type);
+       int
+       xrdp_rdp_send_fastpath(struct xrdp_rdp *self, struct stream *s,
+                              int data_pdu_type);
+       int
+       xrdp_rdp_send_data_update_sync(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_incoming(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_process_data(struct xrdp_rdp *self, struct stream *s);
+       int
+       xrdp_rdp_disconnect(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_send_deactivate(struct xrdp_rdp *self);
+       int
+       xrdp_rdp_send_session_info(struct xrdp_rdp *self, const char *data,
+                                  int data_bytes);
+
+     #+END_SRC
+**** session
+     为了审计，首先需要获取RDP协议栈解包后的数据。审计的数据应该是RDP客户端通过代理连接上目标主机后的整个会话的记录。xrdp使用对象实现了这个概念，会话对应了一个对象xrdp_session，下面是它的定义：
+     #+BEGIN_SRC C
+       struct xrdp_session
+       {
+           tintptr id;
+           struct trans *trans;
+           int (*callback)(intptr_t id, int msg, intptr_t param1, intptr_t param2,
+                           intptr_t param3, intptr_t param4);
+           void *rdp;
+           void *orders;
+           struct xrdp_client_info *client_info;
+           int up_and_running;
+           int (*is_term)(void);
+           int in_process_data; /* inc / dec libxrdp_process_data calls */
+
+           struct source_info si;
+       };
+     #+END_SRC
+**** libxrdp接口
+     本质上这个实现了session接口
+** RDP连接保持状态的通信
+   完成RDP协议连接初始化后，进入协议保持阶段。客户端会向服务器发送：
+   1) 输入数据包。
+   2) 键盘状态在数据包。
+   服务器向客户端发送响应：
+   1) 服务端图形更新数据包。
+   2) 服务端鼠标更新数据包。
+   3) 服务端播放声音数据包。
+** RDP协议图形命令分析
+*** 图形的绘制
+    虽然很多人长期和各种图形界面打交道，但是对于计算机绘图的分工其实并不了解。而理解RDP协议实用性，离不开这方面的知识。首先，RDP客户端时如何如何显示桌面的呢?如果什么都不去想，那么当然是直接从远程计算机上返回图片，假设这个用位图显示，则如果一个桌面的分辨率是1024*768，像素深度16bp，那么更新一次桌面的内容都需要传输1.5MB的数据，这当然是不可接受的。实际上RDP协议（包括其他的远程图形协议），会对数据传输进行各种优化，包括对最重要的进行压缩、部分更新、多通道通信之类的优化。当然本质上这都是传输图形，那么还有个问题，图片是哪里来的？规则的图形还好，但实际上就是图形渲染是现代图形系统不可或缺的功能，同时也是开销较大的功能。现代操作系统中，有很多图形都是动态渲染生成的，需要记住RDP客户端不会进行渲染的操作。所以RDP服务器的运行还需要依赖于其他的图形绘制程序，Linux下面是Xorg等X server。同理VNC协议也是一样，协议本身没有包括图形渲染的部分，所以实际运行还是依赖于某个X server。总之RDP协议只是压缩和解压图形（这里不是常规的压缩和解压的概念，只是和图形渲染这类生成方式相区别，这个之后会讲到），它的后面还需要生成图形的程序。
+*** 图形的压缩
+    图形的传输是RDP协议这类远程图形协议最被关注的部分，尤其是以前带宽还不富裕的时候。这里简单介绍一下RDP协议压缩图形的思路。首先是基本的压缩功能。可以把桌面显示的图形分成两类：
+    1) 规则图形
+    2) 不规则图形
+    规则图形意味这可以用简单的规则和参数来表示，如屏幕上的圆形，只要知道圆心坐标、半径和颜色就可以在屏幕上绘制，这种描述已经是对图形的最简单描述了，再好的压缩算法也不会达到更好了，当然为了进一步压缩传输数据量，以节省带宽，RDP协议会根据历史数据，采用只描述变化的做法。又进一步降低了数据量。另外我们观察操作系统桌面就会发现，桌面本质上是以规则图形作为骨架，在规则图形内部再填上各种不规则图形或者更小的规则图形。所以将规则图形和不规则不行分开表示可以降低提升管理桌面的难度。对于不规则图形而言，相对处理起来简单一点，就是采用压缩率更高的算法来压缩图形。最终RDP协议对于规则图形的处理反而要多。我们可可以看一下xrdp的登录界面：
+
+    [[./rdp代理概述/xrdp_login.png]]
+    
+    xrdp自己返回的界面，这个时候再看就可以发现除了上方那个中微子图片，其他除了文字的都属于规则图形，基本就是矩形和三角形组成的，加上配色单调，基本可以肯定不会占用太多的带宽。
+    有了这个思路，就可以看看RDP协议的具体做法了。
+*** 图形命令分类
+   我们使用RDP协议提供的功能时，最直观的就是它的图片
+   RDP客户端使用图形命令来绘制图形，图形命令大体上分成两类：
+   1) 第一类图形命令（PDO, Primary Drawing Order）
+   2) 第二类图形命令（SDO, Secondary Drawing Order）
+   两者的区别在于前者能够被Windows GDI命令直接调用并绘制到屏幕上，而后者是缓冲的数据（主要缓冲不规则图形）。可以根据两者的关系对它们进行分类，接下来介绍几个典型的指令。
+*** 图形命令实例
+**** RECT命令
+     RECT时RDP绘图程序最常用的命令之一，这个命令会根据左上角的坐标、矩形的宽度，高度以及矩形的颜色让客户端在桌面上绘制该矩形。
+**** RAW BITMAP命令
+     这个命令是绘制位图的命令。位图命令不断更新，从RAW BITMAP命令到COMPRESSED BITMAP, COMPRESSED BITMAP V2 这些命令利用自己绘制的
+**** MEMBLT命令
+     MEMBLT命令的作用是将保存的RAW BITMAP绘制道屏幕上，属于PDO。从RDP服务端图形跟新数据包中可以提取memblt命令的参数：所画位图的索引号1:cache_id、所画位图
+* RDP代理
+** XRDP代理软件概述
+*** xrdp
+    xrdp的功能远远不只RDP代理功能，我们可以从架构中看到：
+    
+    [[./rdp代理概述/xrdp_overview.png]]
+    
+*** rdpproxy
+*** xrdp和rdpproxy的对比
+** 代理实现
+   XRDP代理程序首先会启动一个监听线程在3389端口监听RDP连接请求，如果收到请求，就创建一个处理线程，由该线程将连接请求转发给RDP服务器，同时将RDP服务端的机器的应答信息转发给RDP客户端。这样就实现了对RDP会话的代理。
+   可以看到，我们需要需要处理的数据就是会话过程中交换的数据，包括RDP服务器响应的图形命令以及RDP客户端的输入，如鼠标键盘的输入。堡垒机需要实现的功能主要还是要基于这些数据。那么从这里开始就可以考虑如何实现堡垒机的功能了。
+** RDP协议栈
+*** 协议栈接口
+    我们先处理到RDP层的数据，看一下xrdp中的RDP层提供了什么接口：
+    #+BEGIN_SRC C
+      struct xrdp_rdp *
+      xrdp_rdp_create(struct xrdp_session *session, struct trans *trans);
+      void
+      xrdp_rdp_delete(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_init(struct xrdp_rdp *self, struct stream *s);
+      int
+      xrdp_rdp_init_data(struct xrdp_rdp *self, struct stream *s);
+      int
+      xrdp_rdp_get_fastpath_bytes(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_init_fastpath(struct xrdp_rdp *self, struct stream *s);
+      int
+      xrdp_rdp_recv(struct xrdp_rdp *self, struct stream *s, int *code);
+      int
+      xrdp_rdp_send(struct xrdp_rdp *self, struct stream *s, int pdu_type);
+      int
+      xrdp_rdp_send_data(struct xrdp_rdp *self, struct stream *s,
+                         int data_pdu_type);
+      int
+      xrdp_rdp_send_fastpath(struct xrdp_rdp *self, struct stream *s,
+                             int data_pdu_type);
+      int
+      xrdp_rdp_send_data_update_sync(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_incoming(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_process_data(struct xrdp_rdp *self, struct stream *s);
+      int
+      xrdp_rdp_disconnect(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_send_deactivate(struct xrdp_rdp *self);
+      int
+      xrdp_rdp_send_session_info(struct xrdp_rdp *self, const char *data,
+                                 int data_bytes);
+
+    #+END_SRC
+    
+
+  #+BEGIN_SRC C
+    /* iso */
+    struct xrdp_iso
+    {
+        struct xrdp_mcs *mcs_layer; /* owner */
+        int rdpNegData; /* bool */
+        int requestedProtocol;
+        int selectedProtocol;
+        int failureCode;
+        struct trans *trans;
+    };
+    /* xrdp_iso.c */
+    /* trans 
+     ,*
+     ,*
+    ,*/
+    struct xrdp_iso *
+    xrdp_iso_create(struct xrdp_mcs *owner, struct trans *trans);
+
+
+    void
+    xrdp_iso_delete(struct xrdp_iso *self);
+    int
+    xrdp_iso_init(struct xrdp_iso *self, struct stream *s);
+    int
+    xrdp_iso_recv(struct xrdp_iso *self, struct stream *s);
+    int
+    xrdp_iso_send(struct xrdp_iso *self, struct stream *s);
+    int
+    xrdp_iso_incoming(struct xrdp_iso *self);
+    int
+    xrdp_iso_detect_tpkt(struct xrdp_iso *self, struct stream *s);
+  #+END_SRC
+    这是协议栈的最底层，在我们实现了trans对象建立了之后，就可以初始化这个协议栈对象了，这个协议栈也是最底层的内容。
+    
+    需要注意的是fastpath，所以这里值得一提。属于sec layer，说明这是加密的路径。
+** 服务器模型
+*** 概述
+   一个好的服务器模型可以提高整个会话的吞吐量，也方便编码。
+   rdpproxy还提供了web管理页面，提供的功能如下：
+   
+   [[./rdp代理概述/rdpproxy_web.png]]
+   
+*** rdpproxy服务器模型
+    rdpproxy采用的是基于代理的多线程TCP服务器模型，和一般的多线程TCP服务器模型不同的地方在于，每个处理线程会和客户端和后台服务器建立至少两条连接，而普通的多线程服务器一般只要建立一条连接就可以了，这是代理服务器需要的。作为代理，处理线程不能直接响应客户端的输入，需要先将数据解包后重新包装再转发给后台服务器，之后才能得到真正的响应。
+    对于rdpproxy代理服务器模型，作者提供了一下流程图来描述（画得大概不好）：
+    [[./rdp代理概述/rdpproxy_active.png]]
+    所以之后也照搬作者的描述
+    #+BEGIN_QUOTE
+    每个连接来了以后，监听线程将启动一个连接处理线程进行处理。用文字描述连接处理流程：
+    1) 代理服务端与客户端进行连接初始化。
+    2) 在完成了与客户端的连接初始化过程后，线程创建一个代理客户端socket，与服务器建立TCP连接，并进行与服务器进行协议连接初始化流程。
+    3) 完成1，2之后，连接处理线程分别于客户端和服务器建立了协议级的连接，之后转入了对连接会话的代理转发阶段。
+    4) 和上图类似，首先判断是否有客户端发来的数据，若有，则代理服务端接收数据，并按照服务端协议栈的分析，得到真实的数据。并交给代理客户端协议栈进行重新打包，发送给服务器。若没有数据，则直接跳到5。
+    5) 判断服务器是否有相应的数据发来，若有，则代理客户端接收数据，并按照客户端协议栈的分析，得到真实的服务端响应数据，并交给服务端协议栈进行重新打包，发送给客户端，若没有数据，则令线程挂起200ms，然后跳转到4，重复这个过程。
+    #+END_QUOTE
+*** xrdp服务器模型
+**** 多线程和多进程
+    相比rdpproxy，xrdp的服务器模型会复杂得多。首先xrdp既支持多线程模型也支持多进程模型，可以直接通过xrdp的选项配置。（另外，xrdp很多时候作为一个rdp服务器来使用，这里主要关注代理部分的内容，所以不做讲解。）无论xrdp使用的是多线程模型还是多进程模型，实际运行的代码都是一样的，只是开销的区别。
+**** 代码分析
+    这里大体介绍一下xrdp的处理连接的部分，首先xrdp定义了一个对象xrdp_listen来监听连接，这个对象的定义是：
+    #+BEGIN_SRC C
+      /* rdp listener */
+      struct xrdp_listen
+      {
+	int status;
+	struct trans* listen_trans; /* in tcp listen mode */
+	struct list* process_list;
+	tbus pro_done_event;
+	struct xrdp_startup_params* startup_params;
+      };
+
+      struct trans
+      {
+	  tbus sck; /* socket handle */
+	  int mode; /* 1 tcp, 2 unix socket */
+	  int status;
+	  int type1; /* 1 listener 2 server 3 client */
+	  ttrans_data_in trans_data_in;
+	  ttrans_conn_in trans_conn_in;
+	  void* callback_data;
+	  int header_size;
+	  struct stream* in_s;
+	  struct stream* out_s;
+	  char* listen_filename;
+	  tis_term is_term; /* used to test for exit */
+	  struct stream* wait_s;
+	  char addr[256];
+	  char port[256];
+	  int no_stream_init_on_data_in;
+	  int extra_flags; /* user defined */
+	  struct ssl_tls *tls;
+	  const char *ssl_protocol; /* e.g. TLSv1, TLSv1.1, TLSv1.2, unknown */
+	  const char *cipher_name;  /* e.g. AES256-GCM-SHA384 */
+	  trans_recv_proc trans_recv;
+	  trans_send_proc trans_send;
+	  trans_can_recv_proc trans_can_recv;
+	  struct source_info *si;
+	  int my_source;
+      };
+    #+END_SRC
+    xrdp源码的抽象程度是比较高的，所以先不要强求理解所有字段的含义，这里只需要最重要的是要知道trans是对socket的包装。接下来进入main函数：
+    #+BEGIN_SRC C
+      static struct xrdp_listen *g_listen = 0;
+      int
+      main(int argc, char **argv)
+      {
+	  // 初始化、读取配置等...
+	  g_listen = xrdp_listen_create();
+	  // ...
+	  exit_status = xrdp_listen_main_loop(g_listen);
+	  // 结束、清理...
+
+	  return 0;
+      }
+
+    #+END_SRC
+    可以看到进程启动后会调用xrdp_listen_create方法来构造一个xrdp_listen对象，并将其指针赋值给静态变量g_listen，显然g_listen变量一个进程只有一个。之后会调用xrdp_listen对象的xrdp_listen_main_loop()进入监听进程或者线程的主循环，由于循环的代码比较难懂，这里不贴代码了，其逻辑大体就差调用select来监听socket的事件，当有连接请求时，会通过accept建立新的socket（这里是和socket对应的trans），之后就进入连接处理流程，这也是多进程模型和多线程模型的逻辑分离的位置。xrdp的连接处理函数定义如下：
+    #+BEGIN_SRC C
+      int
+      xrdp_listen_conn_in(struct trans *self, struct trans *new_self)
+      {
+          struct xrdp_process *process;
+          struct xrdp_listen *lis;
+
+          lis = (struct xrdp_listen *)(self->callback_data);
+
+          if (lis->startup_params->fork) // 是否使用多进程模型
+          {
+              return xrdp_listen_fork(lis, new_self); 
+          }
+
+          process = xrdp_process_create(lis, lis->pro_done_event);// 使用了多线程模型
+
+          if (xrdp_listen_add_pro(lis, process) == 0)
+          {
+              /* start thread */
+              process->server_trans = new_self; // 
+              g_process = process;
+              tc_thread_create(xrdp_process_run, 0); // 建立新的线程
+              tc_sem_dec(g_process_sem); /* this will wait */
+          }
+          else
+          {
+              xrdp_process_delete(process);
+          }
+
+          return 0;
+      }
+    #+END_SRC
+    lis->startup_params是从配置文件或者命令行中获取的配置信息，当我们设置了fork为非零值时，代表xrdp使用多进程模型。否则使用，多线程模型。可以看到xrdp_listen_fork是对fork的包装函数，而 ~tc_thread_create(xrdp_process_run)~ 创建了一个新的线程，相比多进程模型，多线程模型需要添加对于线程管理的功能。新线程运行的函数是xrdp_process。另一方面，新的进程最终也会进入函数xrdp_process_run：
+    #+BEGIN_SRC C
+      static struct xrdp_process *g_process = 0;
+      xrdp_process_run(void *in_val)
+      {
+	  struct xrdp_process *process;
+
+	  DEBUG(("process started"));
+	  process = g_process;
+	  g_process = 0;
+	  tc_sem_inc(g_process_sem);
+	  xrdp_process_main_loop(process);
+	  DEBUG(("process done"));
+	  return 0;
+      }
+    #+END_SRC
+    再之后进入xrdp_process对象的xrdp_process_main_loop()方法，之后就可以进入之前讲过的协议栈代码了。
+* VNC代理
+** VNC
+   VNC(Virtual Network Computing，虚拟网络计算)是基于RFB（Remote Frame Buffer）协议进行通信的，是一个基于平台无关的简单显示协议的超级瘦 *客户系统* （也是一个软件），由Cambridge的AT&T实验室设计开发的。vnc的缺省端口是main:5900（C/S）和 http:5800(B/S)端口。RFB (远程帧缓存) 是一个远程图形用户的简单协议，因为它工作在帧缓存级别上，所以它可以应用于所有的窗口系统，例如：X11,Windows和Mac系统。在Linux下，VNC包括以下的四个命令：vncserver，vncviewer，vncpasswd，和 vncconnect。大多数情况下用户只需要其中的两个命令：vncserver 和 vncviewer。
+** 如何阅读RDP代理
+* 基于RDP代理的堡垒机功能实现
+** 堡垒机和RDP代理功能
+   为了实现对于RDP操作人员的的操作进行限制和审计，需要通过代理将RDP会话过程包括请求信息和应答信息都记录存储下来。为之后审计提供数据源。而为了审计RDP会话就需要对RDP报文进行解析，因此理解RDP协议必不可少。对于RDP代理，目前的堡垒机很多都实现回放功能，而且大部分操作信息都在RDP会话中，所以我们也有必要实现图形回放功能。rdpproxy实现了基本的图形回放功能以及基于图形的会话检索功能。
+** TODO 回放功能
+   
+** TODO 图形检索
+* 总结
+   RDP代理主要还是针对Windows主机，现实中大部分人登录Linux一般还是选择能够返回shell的方式，如ssh、telnet等。所以个人前期对于xrdp的代码阅读的重点其实不对，我们会因为xrdp代码中带有大量处理Linux图形界面的代码以及支持本地server功能的代码，这些对于我们实现堡垒机的功能其实没有太大帮助。xrdp的对各个系统调用接口进行了包装，基于对象来组织代码，同时自身没有给出足够的说明文档，所以要理解xrdp的代码功能其实不该从源码入手，而应该先了解RDP协议、针对性地找到xrdp协议栈的实现，确定使用的服务器模型。
+   目前看来，xrdp的完成度其实已经非常高了，代码的组织也非常好，向像协议栈的代码组得就比较好了。当然，由于xrdp源码有大量的包装库，并基于对象来组织代码，所以如果要基于xrdp开发，那么就有必要按照原有的组织风格来，同时最好使用其包装好的函数库，这些都需要不少时间。
+** TODO 计划
+* FAQ
+* 附录
+* 零散
+  在callback处会有
+* TODO 
+  - [ ] 策略配置怎么做？
+  - [ ] rdp数据包的结构体位置，之后放到文档
+  - [ ] RDP代理对于RDP客户端的数据是否直接发送。
+  - [ ] RDP协议是什么，主要做什么？
+  - [ ] RDP代理的实现，xrdp是怎么实现的，rdpproxy时怎么实现的？
+  - [ ] 堡垒机功能实现，有那些功能可以实现，rdpproxy实现了什么？功能依赖那些资源？xrdp提供了那些资源
+  - [ ] 协议栈要配合代码看
+  - [X] 规则图形
+  - [ ] 代理技术和审计技术的关联
+  - [X] 单点登录系统
+  - [ ] 协议栈
+  - [ ] C语言面向对象
+  - [ ] FAQ完善
+  - [ ] 整理一下附录
+  - [ ] rdpproxy处理线程为何要挂起200ms
+* 参考
+  - [[https://en.wikipedia.org/wiki/Remote_Desktop_Protocol][Wikipedia：Remote Desktop Protocol]]
+  - RDP协议的代理与转发的研究和实现
+  - [[http://qimo601.iteye.com/blog/614649][RDP协议详细解析]]
+  - [[https://zh.wikipedia.org/zh-hans/%E4%BD%8D%E5%9B%BE][维基百科:位图]]
+  - [[http://cn.linux.vbird.org/linux_basic/0590xwindow.php][鸟哥的Linux私房菜：X Window配置介绍]]
+  - 宗波. 浅析堡垒机概念及工作原理[J]. 及计算机光盘软件与应用，2012,18：070
+  - 基于代理的远程访问审计系统的设计于实现
+  - RDP协议的代理与转发的研究与实现 乔俊峰
+  - 基于代理的远程访问审计系统的设计与实现 李灏  
+  - 浅析运维堡垒机的设计和应用前景
+  - [[https://github.com/neutrinolabs/xrdp]]
+  - [[https://github.com/neutrinolabs/NeutrinoRDP]]
+  - [[https://github.com/silenceli/rdpproxy]]
+  - [[http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf][C11标准的最终定稿的草案]]
+  - [[https://wiki.wireshark.org/RDP][RDP - The Wireshark Wiki]]
+  - [[http://yosefk.com/blog/oo-c-is-passable.html][oo-c-is-passable]]
+  - [[https://baike.baidu.com/item/VNC/2906305?fr=aladdin][百度百科:VNC]]
+  - The RFB Protocol

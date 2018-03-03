@@ -1,0 +1,45 @@
+#+TITLE: Emacs使用
+#+DATE: 2017-03-31
+#+LAYOUT: post
+#+TAGS: Emacs
+#+CATEGORIES: Emacs
+#+OPTIONS: ^:nil
+
+* 配置
+* 借助ssh在远程主机上开发
+  一般把编译环境搭建在服务器或虚拟机上，但是我的编程环境在本地，所以文件共享是必要的。Tramp mode正好解决了这个痛点。
+** Tramp Mode开发
+   C-x C-f /ssh:username@server.net:path/to/file.txt
+* 借助ftp在远程主机上开发
+  
+* 串口功能
+  #+BEGIN_SRC elisp
+  M-x serial-term 
+  #+END_SRC
+  如果是USB转串口，一般是/dev/ttyUSB0。
+  stackoverflow有人给出了基本的使用，而官方文档没有
+  #+BEGIN_QUOTE
+  I'm not sure how GNU screen fits into the equation but have a look at serial-term.Use C-c C-k to go to char mode and C-c C-j to go to line mode (where your normal bindings apply).Killing the buffer closes the port (C-c k in char mode, C-x k in line mode).
+  #+END_QUOTE
+* C/C++代码索引
+** rtags
+*** 为项目制作编译数据库
+   rtags需要一个compile_commands.json文件去告诉rdm（rtags的服务器）实际如何编译源代码。如果使用的cmake，可以在加上-DCMAKE_EXPORT_COMPILE_COMMANDS=1来生成这个文件。
+*** rtags补全的问题
+    rtags无法实时补全，是rtags的最大缺点。我的解决方法保存了修改之后重启rdm，
+    为了方便我直接绑定了了快捷键。
+*** 无法检索本文件中的内容以及无法实时将文本的更改加入索引中
+    这个问题是由于没有安装flycheck-rtags所致，这也说明rtags对于flcyeck-rtags1有依赖，安装上了之后功能提升了很多，每安装前对于static函数的索引都会出问题。
+** 使用rc来高速rdm你的项目位置
+   rc是一个rtags指令，用于告诉rdm你的path。
+   #+BEGIN_SRC sh
+   rc -J /path/complie_commands/
+   #+END_SRC
+   ~-J~ 参数 指出包含compile_commands.json文件的目录。
+* Emacs 快捷键总结
+** 前言
+   随着使用插件不断增加，我的快捷键冲突问题以及不一致问题一直困扰着我，所以需要归纳一些
+* 时间管理功能 agenda
+  我们会在各种org文件里面写入TODO条目，TODO条目还可以打上任务开始时间（SCHEDULED）和任务结束时间（DEADLINE）
+* 参考
+  - [[https://www.emacswiki.org/emacs/TrampMode][TrampMode]]

@@ -1,0 +1,74 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{c+cm}{/* iso */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso}
+\PYG{p}{\PYGZob{}}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}mcs} \PYG{o}{*}\PYG{n}{mcs\PYGZus{}layer}\PYG{p}{;} \PYG{c+cm}{/* owner */}
+    \PYG{k+kt}{int} \PYG{n}{rdpNegData}\PYG{p}{;} \PYG{c+cm}{/* bool */}
+    \PYG{k+kt}{int} \PYG{n}{requestedProtocol}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{selectedProtocol}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{failureCode}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{trans}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+
+\PYG{c+cm}{/* mcs */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}mcs}
+\PYG{p}{\PYGZob{}}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}sec} \PYG{o}{*}\PYG{n}{sec\PYGZus{}layer}\PYG{p}{;} \PYG{c+cm}{/* owner */}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{iso\PYGZus{}layer}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{userid}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{chanid}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{client\PYGZus{}mcs\PYGZus{}data}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{server\PYGZus{}mcs\PYGZus{}data}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{list} \PYG{o}{*}\PYG{n}{channel\PYGZus{}list}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+
+\PYG{c+cm}{/* sec */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}sec}
+\PYG{p}{\PYGZob{}}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}rdp} \PYG{o}{*}\PYG{n}{rdp\PYGZus{}layer}\PYG{p}{;} \PYG{c+cm}{/* owner */}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}mcs} \PYG{o}{*}\PYG{n}{mcs\PYGZus{}layer}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}fastpath} \PYG{o}{*}\PYG{n}{fastpath\PYGZus{}layer}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}channel} \PYG{o}{*}\PYG{n}{chan\PYGZus{}layer}\PYG{p}{;}
+    \PYG{k+kt}{char} \PYG{n}{server\PYGZus{}random}\PYG{p}{[}\PYG{l+m+mi}{32}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{client\PYGZus{}random}\PYG{p}{[}\PYG{l+m+mi}{256}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{client\PYGZus{}crypt\PYGZus{}random}\PYG{p}{[}\PYG{l+m+mi}{256} \PYG{o}{+} \PYG{l+m+mi}{8}\PYG{p}{];} \PYG{c+cm}{/* 64 + 8, 256 + 8 */}
+    \PYG{k}{struct} \PYG{n}{stream} \PYG{n}{client\PYGZus{}mcs\PYGZus{}data}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{stream} \PYG{n}{server\PYGZus{}mcs\PYGZus{}data}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{decrypt\PYGZus{}use\PYGZus{}count}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{encrypt\PYGZus{}use\PYGZus{}count}\PYG{p}{;}
+    \PYG{k+kt}{char} \PYG{n}{decrypt\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{16}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{encrypt\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{16}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{decrypt\PYGZus{}update\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{16}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{encrypt\PYGZus{}update\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{16}\PYG{p}{];}
+    \PYG{k+kt}{int} \PYG{n}{crypt\PYGZus{}method}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{rc4\PYGZus{}key\PYGZus{}len}\PYG{p}{;} \PYG{c+cm}{/* 8 = 40 bit, 16 = 128 bit */}
+    \PYG{k+kt}{int} \PYG{n}{crypt\PYGZus{}level}\PYG{p}{;}
+    \PYG{k+kt}{char} \PYG{n}{sign\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{16}\PYG{p}{];}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{decrypt\PYGZus{}rc4\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{encrypt\PYGZus{}rc4\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{char} \PYG{n}{pub\PYGZus{}exp}\PYG{p}{[}\PYG{l+m+mi}{4}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{pub\PYGZus{}mod}\PYG{p}{[}\PYG{l+m+mi}{256}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{pub\PYGZus{}sig}\PYG{p}{[}\PYG{l+m+mi}{64}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{pri\PYGZus{}exp}\PYG{p}{[}\PYG{l+m+mi}{256}\PYG{p}{];}
+    \PYG{k+kt}{int} \PYG{n}{rsa\PYGZus{}key\PYGZus{}bytes}\PYG{p}{;} \PYG{c+cm}{/* 64 or 256 , 0 = no rdp security */}
+    \PYG{k+kt}{char} \PYG{n}{fips\PYGZus{}encrypt\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{24}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{fips\PYGZus{}decrypt\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{24}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{fips\PYGZus{}sign\PYGZus{}key}\PYG{p}{[}\PYG{l+m+mi}{20}\PYG{p}{];}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{encrypt\PYGZus{}fips\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{decrypt\PYGZus{}fips\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{sign\PYGZus{}fips\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{is\PYGZus{}security\PYGZus{}header\PYGZus{}present}\PYG{p}{;} \PYG{c+cm}{/* boolean */}
+\PYG{p}{\PYGZcb{};}
+
+\PYG{c+cm}{/* rdp */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}rdp}
+\PYG{p}{\PYGZob{}}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}session} \PYG{o}{*}\PYG{n}{session}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}sec} \PYG{o}{*}\PYG{n}{sec\PYGZus{}layer}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{share\PYGZus{}id}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{mcs\PYGZus{}channel}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}client\PYGZus{}info} \PYG{n}{client\PYGZus{}info}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}mppc\PYGZus{}enc} \PYG{o}{*}\PYG{n}{mppc\PYGZus{}enc}\PYG{p}{;}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{rfx\PYGZus{}enc}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+\end{Verbatim}

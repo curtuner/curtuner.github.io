@@ -1,0 +1,17 @@
+#+TITLE: Flask指南
+#+DATE: 2017-11-17
+#+LAYOUT: post
+#+TAGS: Python, Flask, Web
+#+CATEGORIES: Flask
+
+* Flask概述
+** Werkzeug和jinjia2
+   WSGI是一个web应用和web服务器的通信协议。简单说，就是规定了web服务器该如何调用web应用程序代码，web应用程序该要如何符合运行规范
+   WSGI是一种协议，它规定了web服务器如何调用web应用程序的代码，web应用程序需要符合什么规范，只要web应用程序和web服务器都遵守WSGI协议，web应用程序和web服务器就可以随意组合。
+   Werkzeug是一个WSGI工具包
+   Flask核心非常小
+* Flask
+* 入门练习
+* 参考
+  - [[http://mingxinglai.com/cn/2016/08/flask-source-code/][flask源码分析]]
+  - [[http://www.pythondoc.com/flask-mega-tutorial/index.html][Flask Mega Tutorial]]

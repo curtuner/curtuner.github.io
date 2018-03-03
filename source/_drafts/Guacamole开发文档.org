@@ -1,0 +1,170 @@
+#+TITLE: Guacamole开发文档
+#+DATE: 2017-12-18
+#+LAYOUT: post
+#+TAGS: Guacamole, Network
+#+CATEGORIES: Guacamole
+
+* 前言
+  本文主要包含三个部分，Apache Guacamole这个程序
+  - Guacamole介绍
+  - Guacamole协议简介
+  - 审计相关的功能和扩展
+  - Guacamole服务器模型
+  - 部署方面的扩展
+  - 下一步，如X协议
+* Apache Guacamole
+  首先这个名字是牛油果酱的意思，
+** 概述
+  本章是对Guacamole协议的概述，描述它的设计和一般用途。虽然这里会介绍一些指令和语法，但这不会是一份详尽可用指令清单。本文的目的仅仅是列出一般的类型和用法，如果你在寻找某个具体指令的语法和用途，请参考附录中的协议参考。
+*** TODO 设计
+    Guacamole协议由指令组成，每个指令都是一个以逗号分隔的列表，结尾跟一个终止用的分号。列表的第一个元素是指令的操作码，剩下的都是指令的参数：
+    
+    OPCODE, ARG1, ARG2, ARG3, ...;
+*** 事件
+    当客户端或者服务器有什么东西改变，如某个键被按下、鼠标被移动、剪切板数据改变时，会发送一个指令来说明事件的发生。
+
+* app.js
+  这是guacamole的js文件，应该是动态生成的
+* websocket模块
+* Guacamole配置
+** 简单配置（仅用于开发环境）
+   Guacamole默认的认证方式是从一个名为user-mapping.xml读取所有用户和连接的信息。Guacamole的配置主要包括两个部分：
+   - 全局变量GUACAMOLE_HOME指向默认的搜索位置
+   - guacamole-properties
+*** guacamole-properties配置选项
+    - guacd-ssl：如果设置为true，Guacamole会要求Web服务器和guacd使用SSL/TLS加密。默认情况下是不加密的
+* guacamole-tunnel(直接的处理逻辑应该去看servlet)
+  主要还是关注websocket部分，其实没有必要两个部分都关注，相关的对象包括：
+  - javax.websocket.server.HandshakeRequest
+  - WebSocketTunnelRequest
+  - TunnelRequest：提供了函数用于获得和连接到tunnel
+** 获取一个tunnel的参数（或者说该有的信息）
+   - 用户认证信息
+   - 认证提供者的信息
+   - 请求的连接类型：1) Gucamole connection 2) Guacamole 连接组
+   - tunnel的id
+   - 显示的宽度
+   - 显示的高度
+   - DPI
+   - 音频类型，会在一个tunnel中多次出现
+   - 视频类型，会在一个tunnel中多次出现
+   - 图片类型，会在一个tunnel中多次出现
+   注意：
+   - 这个对象的类型应该有三种，guacamole连接和guacamole group连接，同时还有目标地址
+   - 另外这个对象是原始对象，即可以代表http tunnel，也可以代表websocket。
+   
+   如果是WebSocket需要加上WebSocket的信息，这个要看服务器提供了什么接口。在Java实现里只是提供了这些参数的获取方式
+** 连接建立过程
+   首先，websocket的连接能完全建立是需要和guacd的连接也完成的情况下，
+   1) 收到连接请求
+   2) 尝试连接后台
+   3) 若可以，则建立转发线程。若不行则关闭连接，写一下日志。
+** 建立guactunnel的过程
+*** 连接需要的信息
+    - TunnelRequest
+*** 步骤
+   1) 首先会看建立的直接建立。
+   2) 其实关键还是建立TCP或者建立SSL连接。
+* guacamole-common-js
+  这个模块实现了
+* 审计相关
+** 历史文件
+   历史文件是字符文件，包含内部主要包含guacamole关键字，关键字参数，以及base64编码的数据，这里我截取文件开头的一个片段：
+   
+   4.name,36.curt's X desktop (curt-VirtualBox:1);4.size,1.0,4.1024,3.768;4.size,2.-1,2.11,2.16;3.img,1.1,2.12,2.-1,9.image/png,1.0,1.0;4.blob,1.1,232.iVBORw0KGgoAAAANSUhEUgAAAAsAAAAQCAYAAADAvYV+AAAABmJLR0QA/wD/AP+gvaeTAAAAYklEQVQokY2RQQ4AIQgDW+L/v9y9qCEsIJ4QZggoJAnDYwAwFQwASI4EO8FEMH95CRYTnfCDOyGFK6GEM6GFo7AqKI4sSSsCJH1X+roFkKdjueABX/On77lz2uGtr6pj9okfTeJQAYVaxnMAAAAASUVORK5CYII=;3.end,1.1;6.cursor,1.0,1.0,2.-1,1.0,1.0,2.11,2.16;4.size,2.-1,2.24,2.24;3.img,1.1,2.12,2.-1,9.image/png,1.0,1.0;4.blob,1.1,276.iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABmJLR0QA/wD/AP+gvaeTAAAAgklEQVRIid3UwQ6AMAgDUDD+/y/jxSxocNDiLiPxtKTPFaPIzmN/hByrkQxoI1PAbGTTSHqDLlKpyCNrAIfAUhlgEQhgEBhAEQpAEBqoIicaqqqhJSLhAbtkuQP9E04JUNWvN08nBXzwC+l/RS7wUQPy66hUNOsmlZhifSi3GBDZfC7hyTEQJYJV8QAAAABJRU5ErkJggg==;3.end,1.1;6.cursor,1.7,1.4,2.-1,1.0,1.0,2.24,2.24;3.img,1.1,2.14,1.0,9.image/png,1.0,1.0;4.blob,1.1,8064.iVBORw0KGgoAAAANSUhEUgAABAAAAAMACAIA
+   
+   可以看到都是字符，blob关键字用于传输数据，第一个传输的数据是一个鼠标图像：
+   [[]]
+
+   说白了，审计主要是对这块的数据进行分析，能做到的事情大概有：
+   - 还原成为录像。
+   - 查询用户的操作。
+   - 图像模式匹配
+   ** 图像还原
+   guacamole实现了简单的图像还原工具guacenc，原理很简单。
+** 查询用户操作
+   Guacamole协议对于每个字段，开头会指明其长度
+** 重要的协议指令
+* 工作
+  今后会集中在之后的工作量：
+  - 移植到Django或者Tornado上（工作量比较大）
+  - 以guacd为核心，编写VNC和RDP服务器，之后再考虑编写
+  - X11代理可能之后也会实现，相比之下X11的技术难点更加不好解决，尤其审计如果X11也要支持，开销会比较大，而且X11协议没有加密，说一般还要通过ssh隧道了转发，如果要加密，复杂性会进一步提升，设计到的其他协议的各种细节。尤其要纳入这个框架里面，问题就更大。
+* guacd
+  采用多线程模型，每个连接一个线程。这里的连接一开始是服务器到guacd的连接，guacd随即初始化。这个连接是从浏览器而来。接下来就是后端的握手的过程* libguac库。该库主要用于开发客户端模块插件，如libguac-client-rdp、libguac-client-rdp。或者使用用于开发一个代理。
+* 虚拟驱动器
+* 资源
+  - 图片
+  - 视频
+  - 音频
+  - 文件
+* VNC模块
+  Guacamole的VNC支持是通过库libguac-client-vnc  VNC服务器的端口号一般输出5900或者5901
+* guacd主流程
+  rdp或者vnc这类连接都是比较长期的，不会频繁断开重连，所以不需要多路复用。直接使用最基本的accept就好。
+  1) 用户连接，建立一个文件描述符
+  2) 为这个文件描述符建立一个线程，之后分离
+  3) 使用这个文件描述符建立一个对象，guac_socket，
+  4) 之后利用这个socket，选择协议（连接guacd本来就是为了打开某个协议，这里要选择客户端)，select指令（在guacd_route_connection中）
+  5) 根据选择的协议建立一个协议客户进程，这里的进程也纳入管理
+  6) 进入主循环等待连接，这些连接属于用户发起
+  可见每个连接会发起一个进程，共享
+* 开发
+  xrdp和guacamole都是事件驱动模型，一个用户有多个client
+** 如何记录
+   关键是要实时监控，在写socket的时候要写另一个位置，所以是在socket的handler处监控。
+** 两个 
+** 原型
+* 性能
+  现在看来性能上，一个guacd大体占用25MB，一般认为
+* 零散
+  - Guacamole的代理程序叫做gucad，服务器使用socket和gucad沟通=
+  - VNC速度上步入RDP
+  - Guacamole上的VNC通过减少带宽的使用提升了VNC的效率
+  - 有趣的是这些都使用了事件循环的形式来达成目的，librdp和libvnc都是一样
+* TODO 问题 [%]
+  - [ ] freerdp目前新版本发生了很多改变，guacamole作者打算freerdp到2.0之后跟进，目前只能先用老版本。
+* 逻辑（url-服务）
+  Jetty与
+* 参考
+  - [[http://guacamole.apache.org/doc/gug/][Guacamole Manual]]
+* Guacamole协议参考
+** 绘制指令
+*** arc（弧线）
+*** cfill（填充颜色）
+    用指定颜色来填充但前路径。这个指令会完成当前路径的绘制。之后的路径绘制指令会从一个新的路径开始
+*** clip
+*** close
+    用直线连接起点和终点，从而关闭但前路径。
+** 流指令（Streaming instructions）
+*** img
+    分配一个新的流，同用于更新的图片的元数据相关联，包括目标图层、目标坐标系。图片的内容之后被blob指令通过流传输。图片的实际长度不需要在这条指令中被提前知道。
+    - stream：被分配的流的索引
+    - mimetype：被发送的图片类型
+    - mask：绘制图片的市场在使用的channel mask
+    - layer：目标图层
+    - x：目标图层的以左上角为原点的x轴坐标
+    - y：目标图层的以左上角为原点的y轴坐标
+*** blob
+    用给定的stream发送一个blob的数据，这个blob的数据可以是任意的base64编码的数据，以及只对Guacamole的客户端和服务器有价值的，当streeam被分配并且：
+    - stream：数据应该被发送的stream索引
+    - data：需要被发送的base64编码的数据
+*** end
+    这个指令用于终止一个打开的stream，释放任何服务端或者客户端的资源。发送到stream的流都会忽略。用end指令来终止一个流只代表一个流的终止而不会暗示某个错误。
+    - stream：对应的接受blob的流的索引
+** 对象指令（Object instructions）
+** 客户端握手指令
+** 服务器控制指令（erver control instructions）
+** 客户端事件
+*** key
+    发送特定按键的按下或者释放的事件
+    - keysym：被按下或者释放的按键的X11 keysym
+    - pressed：0代表按键没被按下，1代表按键被按下
+*** mouse
+    - x：当前鼠标的X坐标。
+    - y：当前鼠标的Y坐标。
+    - mask：按钮的massk，表示鼠标的按钮被按下或者被释放的状态。
+*** size
+    说明客户端的最优屏幕尺寸已经从握手的时候指定的最优尺寸改变了，或者相对上次发送size指令改变了。
+    - width：新的最优屏幕宽度
+    - height：新的最优屏幕高度

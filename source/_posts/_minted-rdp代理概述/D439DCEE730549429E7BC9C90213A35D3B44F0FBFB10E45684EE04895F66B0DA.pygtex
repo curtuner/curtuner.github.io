@@ -1,0 +1,17 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+    \PYG{c+cm}{/* xrdp\PYGZus{}iso.c */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}create}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}mcs} \PYG{o}{*}\PYG{n}{owner}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{trans}\PYG{p}{);}
+\PYG{k+kt}{void}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}delete}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{);}
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}init}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{s}\PYG{p}{);}
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}recv}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{s}\PYG{p}{);}
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}send}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{s}\PYG{p}{);}
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}incoming}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{);}
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}iso\PYGZus{}detect\PYGZus{}tpkt}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}iso} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{stream} \PYG{o}{*}\PYG{n}{s}\PYG{p}{);}
+\end{Verbatim}

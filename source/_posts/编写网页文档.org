@@ -1,0 +1,59 @@
+#+TITLE: 编写网页文档
+#+DATE: 2017-05-07
+#+LAYOUT: post
+#+TAGS: Emacs
+#+CATEGORIES: Emacs
+
+* 引言
+  本文旨在记录使用org-mode做自动化报告的过程，当然，不搞学术所以也没想弄成pdf，只要网页能显示对我来说就足够了。我把所有能用到的都使用一遍，作为今后的一个参照。
+* TODO 在网页中显示图片
+  为了解决hexo图片路径和org-mode冲突的问题，需要安装
+* 嵌入程序
+** 启动嵌入代码的功能
+   Emacs支持在org-mode中嵌入代码，目前支持的代码的类型包括：
+   \[a+b=c\]
+   [[./编写网页文档/org-suport-languages.png]]
+   启动语言支持的方法是在初始化文件加入如下代码
+   #+BEGIN_SRC emacs-lisp
+   (org-babel-do-load-languages
+   'org-babel-load-languages
+   `((R . t)
+     (ditaa . t)
+     (dot . t)
+     (emacs-lisp . t)
+     (gnuplot . t)
+     (haskell . nil)
+     (latex . t)
+     (ledger . t)
+     (ocaml . nil)
+     (octave . t)
+     (python . t)
+     (ruby . t)
+     (screen . nil)
+     (,(if (locate-library "ob-sh") 'sh 'shell) . t)
+     (sql . nil)
+     (sqlite . t))))
+   #+END_SRC
+** 嵌入Python代码
+   关键在于对org-babel的使用，前面启动好了以后，为了让它可以在网页和org文件中同时显示要做一点额外的事情。先看一个实例
+   #+BEGIN_SRC python :results output drawer :exports both
+     import pylab as pl
+     from numpy import sin, pi, linspace
+     t = linspace(0, 2*pi, 100)
+     pl.plot(t, sin(t))
+     pic = 'plot_test.png'
+     pl.savefig("./编写网页文档/{}".format(pic))
+     print("#+caption: test python plot")
+     print('[[./编写网页文档/{}]]'.format(pic))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   #+caption: test python plot
+   [[./编写网页文档/plot_test.png]]
+   :END:
+
+
+* 参考
+  - [[http://dayigu.github.io/OrgModeAndLiterateProgramming.html][org-mode, “文学编程” , 自动化报告]]
+  - [[http://orgmode.org/org.html][org-mode官方文档]]

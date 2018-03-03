@@ -1,0 +1,83 @@
+#+TITLE: 嵌入式知识
+#+DATE: 2017-03-22
+#+LAYOUT: post
+#+TAGS: 
+#+CATEGORIES:
+
+* TODO 基本的硬件组成
+  - CPU
+  - 网卡芯片
+* 内存技术设备mtd以及mtd命令
+  mtd是是用于访问memory设备（ROM、flash）的Linux的子系统，mtd将文件系统与底层flash存储器进行了隔离。嵌入式设备一般使用mtd来管理flash空间。要注意的是mtd也指一个指令，用于操作该设备。
+* openwrt
+** openwrt结构（非源码）
+*** image(在flash中的内容)
+*** 文件系统
+    flash上一般有两种文件系统，squash文件系统和jffs2文件系统，前者是只读的后者是可写的，一般会把jffs2 mount到某个目录下。在这两种系统的基础上，实现了mini_info文件系统，这个文件系统给出的抽象是有用户可以读写所有文件，本质上，在只读的情况下，用户使用squash，而在写的情况下用户把内容复制jffs2文件系统中，就可以了。
+**** TODO jffs文件系统
+**** 根文件系统
+     本身就是一个文件系统，不是一个某种独立的文件系统。它的特殊之处在于，它是内核启动时所mount的第一个文件系统
+**** initrd
+     init RAMdisk是在系统引导过程中挂载临时根文件系统，用来支持两阶段的引导过程，initrd文件中包含了各种可执行程序和驱动程序，它们可以用来挂载实际的根文件系统，然后再将这个 initrd RAM磁盘卸载，并释放内存
+
+*** TODO 设备文件的处理
+**** udev
+     udev是用户空间的程序，和管理的是/dev，知道如何改变缺省配置。用于管理设备的程序
+*** 编译流程
+**** 重要的目录
+**** firmware
+     由kernel和rootfs组成，然后合并为bin文件。Image/BuildKernel。默认是由uimage和root.squashfs来生成。
+     在target/linux/ar7xxx/image/Makefile中$(eval $(call BuildImage))
+     BuildImage定义在include/image.mk中， Image/BuildKernel处理vmlinux，Image/mkfs/squashfs生成rootfs，并与vmlinux合并为.bin
+*** flash layout
+    openwrt典型的有两种布局方式，一种是KR（kernel在前，rootfs在后），另一种是RK（rootfs在前，kernel在后）。 取决于u-boot默认的boot地址，也可以在先进入uboot来手动修改启动地址，使得kernel能被正确加载。一般的布局先是uboot和uboot-env，之后是firmware(KR或者RK)，再之后是art以及其他的。
+    固件如何布局其实无所谓
+** openwrt源码结构分析
+   
+* MIPS处理器
+** 地址空间映射
+   MIPS的内存空间映射很重要，相关信息可以datasheet中得到，尤其特别的寄存器地址。MIPS处理器的地址空间一般分为（Kuseg, Kseg0, Kseg1, Kseg2）。Kuseg是最前面的用户地址空间占2G，一般要在MMU被设置完之后才能使用。Kseg0占之后的的地址被映射到物理地址的低512M，这段内存也称为unmapped cached空间。Kseg1与Kseg0是映射到同一段内存空间的，只不过它不经过告诉缓存，所以它是稳定的。Kseg2是给内核态使用的。MIPS CPU运行时有三种状态：用户模式（User Mode）；核心模式（Kernel Mode）；管理模式（Supervisor Mode）。其中管理模式不常用。用户模式下，CPU只能访问KUSeg；当需要访问KSeg0、Kseg1和Kseg2时，必须使用核心模式或管理模 式。
+* 串口通信（Serial Communications）
+  串口按位（bit）发送和接收字节，可以在使用一根线发送数据的同时用另一根线接收数据。
+* switch芯片
+  交换机芯片有多种，用于满足不同的需求，我平常接触最多的是QCA8337，所以以它为实例。
+** QCA8337
+   每个端口是否占一个MAC呢
+* 零散
+** ramdisk
+   通过软件将一部分内存（RAM）模拟为硬盘来使用的一种技术
+** 操作系统的自举
+   很大一部分的内容在进行这个过程
+** busybox
+   BusyBox 是很多标准 Linux® 工具的一个单个可执行实现。BusyBox 包含了一些简单的工具，例如 cat 和 echo，还包含了一些更大、更复杂的工具，例如 grep、find、mount 以及 telnet（不过它的选项比传统的版本要少）.一个程序使用命令
+** 设备号
+   一个字符设备或者块设备都有一个主设备号和次设备号。主设备号和次设备号统称为设备号主，设备号用来表示一个特定的驱动程序。次设备号用来表示使用该驱动程序的各设备
+** 固件备份
+* FAQ
+** 一般无线设备开发人员说的方案指什么？
+   值得是芯片方案，wifi芯片一般集成在cpu中，所以很多时候是值wifi芯片方案
+* 有用的问题
+* TODO [0%]
+  - [ ] 完成日志文件系统
+* TODO 零散问题
+** TODO 备份固件的方法
+   1) 将flash拆开，使用编程器读出
+** TODO 编程器的使用
+   编程器主要修改，编程器通常与计算机连接
+** TODO FAQ
+*** 什么是SoC？
+    System on Chip(片上系统)，在单个芯片上集成一个完整的系统，
+*** 系统不是指操作系统吗？
+    在嵌入式领域不通用，系统指的是包括CPU，存储器和其他组件的组合。操作系统视为虚拟机比较合适
+*** firmware中的ART是什么？
+    Atheros Radio Test/Atheros电波测试 - 它包含MAC地址和无线系统的校准信息(EEPROM). 如果该部分的信息丢失或损坏,ath9k (无线驱动程序) 就彻底罢工了
+* 参考文献
+  - [[https://wiki.openwrt.org/zh-cn/doc/techref/flash.layout][Flash Layout/Flash 布局]]
+  - [[http://baike.baidu.com/item/%E7%BC%96%E7%A8%8B%E5%99%A8][编程器]]
+  - [[http://blog.chinaunix.net/uid-26598889-id-3062943.html][openwrt文件系统加载分析]]
+  - [[https://www.ibm.com/developerworks/cn/linux/1306_qinzl_squashfs/][基于 SquashFS 构建 Linux 可读写文件系统]]
+  - [[http://baike.baidu.com/link?url=mc0KzaSaMJrjuFs3R1hzwdQZKix4wqahLc90DkUcVfUP-jZaQ2pk3crJ_RIKq23kJuTgvXdZTt8a-ajkbJkhCI7KlcdbOweaHvE6dWGrl_UlohHMD2ZsadRqIGNY6MQcxVj9nrqqyYqV_b6B8bCNGnyHW43dKfxK2ISlsmRrDd9ZYRKzCkYaBFb7FiGYhFhb][ramdisk]]
+  - [[http://baike.baidu.com/item/initrd?sefr=cr][initrd]]
+  - [[https://www.ibm.com/developerworks/cn/linux/l-busybox/index.html][BusyBox 简化嵌入式 Linux 系统]]
+  - [[http://www.voidcn.com/blog/yubing_615/article/p-6089704.html][openwrt flash layout]]
+  - [[https://wiki.microduino.cn/index.php?title=%E7%AC%AC%E4%B8%80%E8%AF%BE--OpenWRT_uboot%E4%BB%8B%E7%BB%8D&variant=zh][地址空间映射]]

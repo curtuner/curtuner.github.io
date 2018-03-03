@@ -1,0 +1,76 @@
+#+TITLE: Wireshark抓包分析
+#+DATE: 2017-04-22
+#+LAYOUT: post
+#+TAGS: Network
+#+CATEGORIES: Network
+
+* 前言
+  这里只讲在我的电脑上如何抓包而已
+* wireshark 安装
+  在Arch上直接使用pacman安装就可以了，我这里安装qt版本
+  #+BEGIN_SRC sh
+  sudo pacman -S wireshark-qt
+  #+END_SRC
+  安装完之后并不能直接使用，打开wireshark会显示权限不足，这时只要把用户加入wireshark用户组，之后重启电脑即可：
+  #+BEGIN_SRC sh
+  sudo gpasswd -a $USER wireshark
+  #+END_SRC
+* 抓802.11包
+** 建立虚拟网卡
+  wireshark默认情况下无法抓取无线网络的管理包。我们可以通过配置无线网卡为monitor模式，来使用wireshark进行抓包。将网卡设为monitor会导致无法联网，如果在使用WiFi会比较麻烦，所以还是生成一个虚拟网卡来监听最好。对于无线网卡，使用 iw 来来代替iwconfig进行操作（使用ip估计不行）：
+  #+BEGIN_SRC sh
+  iw dev wlan0 interface add mon0 type monitor
+  ip link set mon0 up
+  #+END_SRC
+  之后就可以使用Wireshark抓包了
+** 802.11帧类型
+   为了效率，802.11的帧长度是可变的，所以十分复杂。
+   802.11的数据包大体分为3种：
+   1) 数据：携带更高层次的数据，来自协议栈上层的数据
+   2) 管理：管理帧负责监督，主要用来加入或退出无线网络，以及处理接入点之间连接的转移事宜
+   3) 控制：是用来控制对共享媒体(即物理媒介，如光缆)的访问（CSMA/CA）
+   控制帧和数据帧是紧密搭配使用的，管理帧则在一开始和结束起作用。
+   对于不同的帧类型有不同的处理方式，所以效率高的方法是在帧的开头就放置元数据。802.11的帧元数据叫frame control：
+   
+** TODO 控制帧
+*** RTS帧
+    RTS用于申请无线媒介的使用时间，其值为Duration。
+*** CTS帧
+    用于回复RTS帧
+*** ACK帧
+    
+** 管理帧
+*** Beacon帧
+    Beacon帧是一个周期发送的帧，用于声明网络，可以通过调整周期来降低设备功耗。STA通过监听Beacon帧来发现网络，所以Beacon帧应包含相应BSS的所有信息。
+    Beacon帧的结构图如下：
+    [[./Wireshark抓包分析/beacon帧.jpg]]
+
+    网络的默认字节序是大端序，而wireshark会把字节序转化为本机字节序再显示。
+    先看一个wireshak抓的帧：
+    [[./Wireshark抓包分析/frame基本结构.png]]
+    可以看到，除了beacon帧的信息外还提供了额外的信息，实际分析时从第三个开始。Beacon大体分为802.11头部和Beacon信息，其中radiotap header是网卡接收到帧后给wireshark的一些额外信息，记录了信号强度、噪声强度和传输速率等物理层信息。和多数协议一眼，传递数据的帧往往在开头会有元数据，一般处理程序会根据帧的类型来调用相应程序。在802.11中叫frame control，占头两个字节。
+
+** Probe Request/Response帧
+   
+** 不同过程抓包分析
+*** RTS/CTS握手   
+    RTS/CTS模式主要为了解决隐藏终端问题，
+** 数据帧
+   802.11的数据帧是对于LLC帧的包装，
+* 抓802.1q包
+  电脑默认是抓不到带有vlan tag的包的，所以要设定一个VLAN网口
+* 802.11 网络要点
+** 网络类型
+   - IBSS
+* FAQ
+** 1200Mbps的速度是真的吗？
+   一般是指2.4G的的速度300Mbps，5G的速度867Mbps，加起来大约有1200Mbps
+* 零散
+  - 802.11是一个靠近底层的协议，表示信息的基本单位是Bit，和我们平常使用byte是不同的，实际上，靠近底层时，这是自然而然的事情。802.11
+  - ssid是一个局域网的id
+* 参考
+  - [[http://www.aneasystone.com/archives/2016/08/wireless-analysis-one-monitoring.html][实战无线网络分析（篇一）无线监听]]
+  - [[https://wiki.archlinux.org/index.php/VLAN_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)][Vlan设置]]
+  - [[http://www.jianshu.com/p/6cc4ea0dc0bc][802.11 协议（wifi）格式]]
+  - [[http://blog.csdn.net/rs_network/article/details/50676786][802.11的Beacon帧]]
+  - 《深入理解android：WiFi模块》

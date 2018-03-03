@@ -1,0 +1,95 @@
+#+TITLE: Graphviz学习笔记
+#+DATE: 2017-05-08
+#+LAYOUT: post
+#+TAGS: Graphviz, visualization
+#+CATEGORIES: Graphviz
+
+* 引言
+  Graphviz 是一个开源的图可视化工具，非常适合绘制结构化的图标和网络。Graphviz 使用一种叫 DOT 的语言来表示图形。本文主要记录了如何使用dot语言的一些实例。
+  Graphviz能供我们定义的图形元素有3种：
+  - 图
+  - 定点
+  - 边
+* 图形类型
+  - 有向图
+  - 无向图
+* dot语言和图片实例
+** 顺序图
+   先尝试生成最简单的顺序图：
+   #+BEGIN_SRC dot :file Graphviz学习笔记/seq_diagram.png :cmdline -Kdot -Tpng 
+     digraph g {
+	   a->b
+	   b->c
+	   c->d
+     }
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:Graphviz学习笔记/seq_diagram.png]]
+
+   使用编译指令:
+   #+BEGIN_SRC sh
+     dot -Tpng test.dot -o test.png
+   #+END_SRC
+   可以得到以下图片：
+   #+RESULTS:
+   :RESULTS:
+   [[file:seq_diagram.png]]
+   :END:
+  可以看到，默认的顺序图是从上到下的。也可以让这幅图从左往右排列，代码修改如下：
+  #+BEGIN_SRC dot :file Graphviz学习笔记/seq_diagram_lr.png :cmdline -Kdot -Tpng :results drawer 
+    digraph g {
+  	rankdir=LR
+	
+  	a->b
+  	b->c
+  	c->d
+    }
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   [[file:Graphviz学习笔记/seq_diagram_lr.png]]
+   :END:
+   可见，是从上往下还是从左往右取决于rankdir这个全局变量。
+** 带有子图的绘图要点
+   一大要点是带有子图的名字要带有cluster作为前缀。
+* record定义
+  record是可以自由定义区域内容的节点，而且每个区域可以有独立的箭头。
+  #+BEGIN_SRC dot :file Graphviz学习笔记/record.png :cmdline -Kdot -Tpng :results drawer 
+    digraph g {
+	    struct1 [shape = Mrecord, label = " <f0> left | <f1> mid | <f3>right"]
+	    struct1:f1 -> B
+	    struct1:f3 -> C
+	    B -> C
+    }
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   [[file:Graphviz学习笔记/record.png]]
+   :END:
+* 画板
+  #+BEGIN_SRC dot :file Graphviz学习笔记/record.png :cmdline -Kdot -Tpng :exports results
+    digraph g {
+	    node [shape = rarrow]
+	    edge [shape = dashed]
+
+	    a -> b
+	    b -> d
+	    c -> d
+
+	
+    }
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:Graphviz学习笔记/record.png]]
+
+* TODO 使用Python生成复杂的图
+* TODO 收集常用的图片素材方便作为节点
+* 要点
+  rankdir会定义方向，之后就是根据定义节点的顺序来显示，而不是节点的逻辑结构。这个还需要不断实践。
+* 参考
+  - [[https://www.ibm.com/developerworks/cn/aix/library/au-aix-graphviz/][使用 Graphviz 生成自动化系统图]]
+  - [[https://casatwy.com/shi-yong-dotyu-yan-he-graphvizhui-tu-fan-yi.html][使用DOT语言和Graphviz绘图(翻译)]]

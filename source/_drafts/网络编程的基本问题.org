@@ -1,0 +1,110 @@
+#+TITLE: 网络编程的基本问题
+#+DATE: 2017-08-12
+#+LAYOUT: post
+#+TAGS: Network
+#+CATEGORIES: Network
+
+* TODO socket编程
+** 套接字
+   套接字在内核看来是通信的一个端点，而对于用户程序而言是一个文件。一般调用了socket()函数后，某种地址类型的socket已经被创建了，其中sockaddr是16字节的。
+   socket函数只是创建一个socket文件的描述符，此时还不能作为一个完全打开的文件来使用，只有connect和bind/listen才可以。
+   首先需要理清套接字、文件描述符和套接字地址的关系。套接字对于内核来说是一个通信的端点，从Linux程序的角度上来讲是一个有相应描述符的打开文件，这个文件打开的方式是建立连接。所以对应socket原语，有connect和accept来打开一个文件。关闭文件则使用close或者shutdown。至于socket是一个建立一个文件描述符，这个只是一个占用着的文件描述符，这个文件描述符是socket的一部分。socket还有socket地址（通用的结构是struct sockaddr），以及其他的socket属性。
+** 地址
+   so
+** getaddrinfo和getnameinfo
+   *这两个接口是专门为socket设计的* ，比较重要的一点是，getaddrinfo会得到一个以addrinfo为节点的链表，由于这是动态分配内存的，事后要自己来释放内存。addrinfo的定义是：
+   #+BEGIN_SRC C
+     struct addrinfo {
+	 int ai_flags;
+	 int ai_family; // socket的第一个参数
+	 int ai_socktype;
+	 int ai_protocol;
+    
+     }
+   #+END_SRC
+   
+** accept
+   这个函数的一个特点是会一种阻塞直到被连接。
+   需要注意的是如何accept被中断，会返回-1, errno设置为 EINTR
+** socket接口和TCP状态转移图的关系
+   client调用socket和connect后，由connect引起了三次握手，当三次握手完成后，client的connect和server中的accept均返回。更具体地，当client受到第二次握手的报文后，connect其实已经返回了，而服务器要等到最后一次握手后accept才返回。
+** 僵死进程和exit
+   exit的系统调用只能是进程退出，但是进程的数据结构没有被销毁，进程号还会被占用。如果一直没有被处理，进程号可能会被用完。
+** 僵死进程的处理
+   大体有两种处理方式：
+   1) 由父进程处理。
+   2) 由init进程（1号进程，现在应该是systemd）处理。
+   父进程处理的方式又分为同步处理和异步处理。init的处理就比较简单，只要让进程编程孤儿进程就可以了。
+** nonblock socket
+** TODO 哪类的应用要使用哪类socket
+** select的基本知识
+   select的timeout设置为NULL时，会一直等待，设置为0时，则立刻返回。
+** bind
+** 检查一个socket是否可以接收数据
+   可以使用select
+*** 如何使用bind比较好？
+    这里看看xrdp的包装
+    #+BEGIN_SRC C
+      int
+      g_tcp_bind_address(int sck, const char* port, const char* address)
+      {
+	  struct sockaddr_in s;
+
+	  memset(&s, 0, sizeof(struct sockaddr_in));
+	  s.sin_family = AF_INET;
+	  s.sin_port = htons((tui16)atoi(port));
+	  s.sin_addr.s_addr = INADDR_ANY;
+	  if (inet_aton(address, &s.sin_addr) < 0)
+	  {
+	      return -1; /* bad address */
+	  }
+	  return bind(sck, (struct sockaddr*)&s, sizeof(struct sockaddr_in));
+      }
+    #+END_SRC
+    这里要知道atoi出错的时候返回0，
+    这里的接口要好一点，
+** epoll
+*** 概述
+   只有三个接口：
+   1) int epoll_create(int size)
+   2) int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+   3) int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout)
+*** epoll_create 
+    创建一个epoll的handle，它能够监控的fd数目只受到机器资源限制
+*** epoll_event
+** unix域套接字
+   Unix域套接字的效率比位于同一主机的TCP套接字的两端通信速度要快得多。X Window System就是实例，当发现server和client是在同一台主机上的时候，就会使用Unix域套接字。Unix域中用于标识client和server的协议地址是普通文件系统中断路径名。
+** TCP nodelay的作用
+   TCP连接默认使用Nagle算法来处理小包。Nagle算法是为了提高带宽利用率的算法。关闭的方法是设定NO_DELAY
+** TCP keepalive
+** 关于socket接口的封装
+   原始的socket接口基本的使用基本都不算合适，我一大家都不约而同地进行包装
+* signal和sigaction的区别
+  两者是相同的
+* 一个输入操作涉及的阶段
+  - 等待数据准备好
+  - 将数据从内核缓冲区复制到进程缓冲区，
+* 关于连接状态
+  如果
+* 有限状态机
+** 前言
+   socket处理的是字节流，一个可能的做法是，如果一个程序完全由数据流驱动，那么作为一个状态机来思考其实非常有用。而在数据报交流的时候状态机的意义其实更大。
+** 有限状态机的定义（如何抽象的基础）
+** 用于编程的一个要点
+   使用过程式语言编写状态机的一大问题是，过程式语言本身可以模拟成一个状态机
+* 零散
+  - ip_mreq
+  - 目前socket函数一般和getaddrinfo
+  - 相比之下，字符串作为参数显得更加通用，大不了写个parser。
+  - lladdr 代表link-level address
+  - 回收进程的一个常用做法是把SIGCHLD设定为SIG_IGN，这样它的子进程不会变成僵死进程，不过这种方法不通用
+  - socket nodelay
+** 如何建立UDP套接字
+** tcpdump的使用
+   混杂模式下网络接口会截获经过接口的每个分组。一般是广播的分组，单播的除非是发送给自己的，否则一般不会被收到。但某种程度上可以了解网络的一些信息。
+** 为什么要实现僵死进程
+   方便父进程获取子进程的信息，当然这样很多时候会造成资源的浪费，所以一个比较好的做法是每次调用fork后要执行wait来回收。
+** accept能有的东西
+   accept如何接收不同种类的socket，
+* 参考
+  - 《计算理论导引》

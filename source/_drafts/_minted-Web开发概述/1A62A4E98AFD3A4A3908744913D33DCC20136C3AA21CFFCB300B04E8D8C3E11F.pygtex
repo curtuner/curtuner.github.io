@@ -1,0 +1,6 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{WebPage} \PYG{n+nf}{a\PYGZus{}URI}\PYG{p}{(}\PYG{n}{HTTPMothed} \PYG{n}{method}\PYG{p}{)} \PYG{p}{\PYGZob{}}
+    \PYG{c+c1}{//...}
+    \PYG{k}{return} \PYG{n}{GeneratePage}\PYG{p}{(}\PYG{n}{result}\PYG{p}{);}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

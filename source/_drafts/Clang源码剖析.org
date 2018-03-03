@@ -1,0 +1,33 @@
+#+TITLE: Clang源码剖析
+#+DATE: 2017-11-04
+#+LAYOUT: post
+#+TAGS: Clang
+#+CATEGORIES: Clang
+
+* 源码下载
+  #+BEGIN_SRC sh
+    git clone git@github.com:llvm-mirror/clang.git
+  #+END_SRC
+  虽然也有svn代码仓库，但我这里使用git上
+* Clang Driver
+  先看看官网的Driver设计图：
+  [[./Clang源码剖析/clang_driver.jpg]]
+  可以看到绿色的是实际的Driver Function，所以分析Driver关键是绿色的单元。
+* clang的使用
+  clang -cc1代表Clang前端，而clang则代表Clang Driver。
+  clang预处理C语言后的生成的文件后缀是.i，而处理C++文件后的文件后缀是.ii文件。
+  clang的-ccc-print-phases选项
+** Clang的Pipeline
+   Pipeline的作用是根据具体的编译选项，构建不同的Compiler Action。利用-ccc-print-phases选项就是打印的Compiler Action
+** Clang的Bind
+   Bind的作用是Tool和Filename的选择提供。Bind为我们提供具体的Tool来运行Action。Bind与Toolchain沟通，Toolchain负责选择具体的Tool来完成一系列操作。Filename是进行IPC时候的文件名。
+** Clang的Translate
+   翻译工具的选项参数，如ld在不同的平台上是不一样的。
+** Clang的Execute
+   执行整个编译，执行编译流程
+* 零散
+** 
+* 参考
+  - [[https://zhuanlan.zhihu.com/p/22974869][谁说不能与龙一起跳舞：Clang / LLVM (2)]]
+  - 
+  - [[http://clang.llvm.org/get_started.html][Getting Started: Building and Running Clang]]

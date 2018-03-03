@@ -1,0 +1,17 @@
+#+TITLE: SMP系统结构
+#+DATE: 2017-06-30
+#+LAYOUT: post
+#+TAGS: Architecture
+#+CATEGORIES: Architecture
+
+* 前言
+  现在单核CPU的频率已经接近极限了，再提高效率就只能提高并行度了。对称多处理器（Semetric Multi-Processor Architecture）是人们开发出来的一种多处理器系统结构。Intel Pentium处理器的采用的就是SMP结构。在SMP结构中所有CPU都是对称的，已经没有统一的一个了，所有CPU通过一条总线共享内存和所有外设。为了减少内存访问的冲突，每个CPU都有自己的缓存。
+  各个CPU使用同一个进程表，一个进程可能会在不同的CPU中运行。对于中断，可能会动态分配给其中的某个CPU。SMP结构并不能提高单个进程的运行速度，但是可以提高吞吐量
+* 思考
+  - 同步在于不同进程对于公共资源的状态的信息是相同的。
+  - 对于单处理器，缓冲的作用在于提高取指的速度和读写数据的速度。
+* SMP结构的中断控制
+  现在一般使用的中断控制器叫高级可编程中断控制器（Advanced Programable Interrupt Controller）,SMP结构为每个CPU芯片集成了一个APIC同时还有全局的APIC。
+* 参考
+  - 《Linux内核源码情景分析》
+

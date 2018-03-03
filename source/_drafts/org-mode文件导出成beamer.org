@@ -1,0 +1,36 @@
+#+TITLE: org-mode文件导出成beamer
+#+DATE: 2018-01-05
+#+LAYOUT: post
+#+TAGS: Emacs, org-mode, Latex
+#+CATEGORIES: Emacs
+#+OPTIONS: H:2 toc:f num:t
+
+* 前言
+  Beamer文档的设计和一般文档不同，Beamer的层次不宜过高，在Beamer中标题分成了三个层次，章节元素、帧和块。由于Beamer后台就是Latex后台，所以Latex可以使用的关键字在Beamer中也都可以使用。一个session有多个frame、同时一个frame有多block。block可以有也可以没有，如果要支持复杂的frame，就可以使用block。
+  习惯上我们称幻灯片的每一张叫slice，而Beamer习惯上叫做习惯上叫做frame。
+* 可用主题
+  根据具体的情况可以改变主题
+* 设置
+  beamer该如何导出每个人的想法都不同，个人倾向于直接在初始化的时候就设置好。首先是，代表frame的标题，默认是第一级标题，而其实使用第二级标题会好很多所以在开头加如下行：
+  #+BEGIN_SRC org
+    ,#+OPTIONS: H:2
+  #+END_SRC
+  把H的值改成2
+* 属性和列
+  property是一系列和条目关联的键值对，和那个条目关联主要取决于位置，
+  
+  - C-M-i：pcomplete，在一个冒号之后，可以补全成property keysym
+  - C-c C-c：org-set-property，设置一个property
+* block的使用
+  Beamer有block的概念，指的是一段文字在逻辑上和其他文字分离，一个block如何表示取决于beamer的主题。
+** 行block（默认）
+** 列block
+   同行block不同，列block并不会完全占用一整列，而是根据内容的长度来决定占用多少行。有了行了列，就可以了
+* 插入代码
+  
+* 快捷键
+  - 
+* Beamer的导出设定
+* TODO 问题
+  - [ ] 如何将babel的字体大小改变
+    #+ATTR_LATEX

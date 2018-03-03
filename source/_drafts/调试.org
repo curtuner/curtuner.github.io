@@ -1,0 +1,13 @@
+#+TITLE: 调试
+#+DATE: 2018-01-28
+#+LAYOUT: post
+#+TAGS: 调试
+#+CATEGORIES: 调试
+
+* 工具
+  - ipython作为通信方，
+  - tcpdump读包
+  - strace/ltrace跟踪进程
+  - log（可以是journalctl）
+* 性能
+  - 

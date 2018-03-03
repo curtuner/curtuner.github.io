@@ -1,0 +1,61 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k+kt}{int}
+\PYG{n+nf}{callback}\PYG{p}{(}\PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{id}\PYG{p}{,} \PYG{k+kt}{int} \PYG{n}{msg}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param1}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param2}\PYG{p}{,}
+	 \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param3}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param4}\PYG{p}{)}
+\PYG{p}{\PYGZob{}}
+    \PYG{k+kt}{int} \PYG{n}{rv}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}wm} \PYG{o}{*}\PYG{n}{wm}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}rect} \PYG{n}{rect}\PYG{p}{;}
+
+    \PYG{k}{if} \PYG{p}{(}\PYG{n}{id} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{)} \PYG{c+cm}{/* \PYGZdq{}id\PYGZdq{} should be \PYGZdq{}struct xrdp\PYGZus{}process*\PYGZdq{} as long */}
+    \PYG{p}{\PYGZob{}}
+	\PYG{k}{return} \PYG{l+m+mi}{0}\PYG{p}{;}
+    \PYG{p}{\PYGZcb{}}
+
+    \PYG{n}{wm} \PYG{o}{=} \PYG{p}{((}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}process} \PYG{o}{*}\PYG{p}{)}\PYG{n}{id}\PYG{p}{)}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{wm}\PYG{p}{;}
+
+    \PYG{k}{if} \PYG{p}{(}\PYG{n}{wm} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+	\PYG{k}{return} \PYG{l+m+mi}{0}\PYG{p}{;}
+    \PYG{p}{\PYGZcb{}}
+
+    \PYG{n}{rv} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{;}
+
+    \PYG{k}{switch} \PYG{p}{(}\PYG{n}{msg}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+	\PYG{k}{case} \PYG{l+m+mi}{0}\PYG{o}{:} \PYG{c+cm}{/* RDP\PYGZus{}INPUT\PYGZus{}SYNCHRONIZE */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}key\PYGZus{}sync}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mi}{4}\PYG{o}{:} \PYG{c+cm}{/* RDP\PYGZus{}INPUT\PYGZus{}SCANCODE */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}key}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mi}{5}\PYG{o}{:} \PYG{c+cm}{/* RDP\PYGZus{}INPUT\PYGZus{}UNICODE */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}key\PYGZus{}unicode}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x8001}\PYG{o}{:} \PYG{c+cm}{/* RDP\PYGZus{}INPUT\PYGZus{}MOUSE */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}process\PYGZus{}input\PYGZus{}mouse}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{,} \PYG{n}{param2}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x8002}\PYG{o}{:} \PYG{c+cm}{/* RDP\PYGZus{}INPUT\PYGZus{}MOUSEX (INPUT\PYGZus{}EVENT\PYGZus{}MOUSEX) */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}process\PYGZus{}input\PYGZus{}mousex}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{,} \PYG{n}{param2}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x4444}\PYG{o}{:} \PYG{c+cm}{/* invalidate, this is not from RDP\PYGZus{}DATA\PYGZus{}PDU\PYGZus{}INPUT */}
+	    \PYG{c+cm}{/* like the rest, it\PYGZsq{}s from RDP\PYGZus{}PDU\PYGZus{}DATA with code 33 */}
+	    \PYG{c+cm}{/* it\PYGZsq{}s the rdp client asking for a screen update */}
+	    \PYG{n}{MAKERECT}\PYG{p}{(}\PYG{n}{rect}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{,} \PYG{n}{param2}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param4}\PYG{p}{);}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}bitmap\PYGZus{}invalidate}\PYG{p}{(}\PYG{n}{wm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{screen}\PYG{p}{,} \PYG{o}{\PYGZam{}}\PYG{n}{rect}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x5555}\PYG{o}{:} \PYG{c+cm}{/* called from xrdp\PYGZus{}channel.c, channel data has come in,}
+\PYG{c+cm}{		    pass it to module if there is one */}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}wm\PYGZus{}process\PYGZus{}channel\PYGZus{}data}\PYG{p}{(}\PYG{n}{wm}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{,} \PYG{n}{param2}\PYG{p}{,} \PYG{n}{param3}\PYG{p}{,} \PYG{n}{param4}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x5556}\PYG{o}{:}
+	    \PYG{n}{rv} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}mm\PYGZus{}check\PYGZus{}chan}\PYG{p}{(}\PYG{n}{wm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+	\PYG{k}{case} \PYG{l+m+mh}{0x5557}\PYG{o}{:}
+	    \PYG{c+c1}{//g\PYGZus{}writeln(\PYGZdq{}callback: frame ack \PYGZpc{}d\PYGZdq{}, param1);}
+	    \PYG{n}{xrdp\PYGZus{}mm\PYGZus{}frame\PYGZus{}ack}\PYG{p}{(}\PYG{n}{wm}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{mm}\PYG{p}{,} \PYG{n}{param1}\PYG{p}{);}
+	    \PYG{k}{break}\PYG{p}{;}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{k}{return} \PYG{n}{rv}\PYG{p}{;}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

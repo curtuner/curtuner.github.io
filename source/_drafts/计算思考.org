@@ -1,0 +1,8 @@
+#+TITLE: 计算思考
+#+DATE: 2017-10-08
+#+LAYOUT: post
+#+TAGS: 编程
+#+CATEGORIES: 编程
+
+* 设备
+  

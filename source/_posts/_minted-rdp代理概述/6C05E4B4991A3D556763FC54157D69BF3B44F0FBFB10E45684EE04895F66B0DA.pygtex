@@ -1,0 +1,32 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k+kt}{int}
+\PYG{n+nf}{xrdp\PYGZus{}listen\PYGZus{}conn\PYGZus{}in}\PYG{p}{(}\PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{self}\PYG{p}{,} \PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{new\PYGZus{}self}\PYG{p}{)}
+\PYG{p}{\PYGZob{}}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}process} \PYG{o}{*}\PYG{n}{process}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}listen} \PYG{o}{*}\PYG{n}{lis}\PYG{p}{;}
+
+    \PYG{n}{lis} \PYG{o}{=} \PYG{p}{(}\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}listen} \PYG{o}{*}\PYG{p}{)(}\PYG{n}{self}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{callback\PYGZus{}data}\PYG{p}{);}
+
+    \PYG{k}{if} \PYG{p}{(}\PYG{n}{lis}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{startup\PYGZus{}params}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{fork}\PYG{p}{)} \PYG{c+c1}{// 是否使用多进程模型}
+    \PYG{p}{\PYGZob{}}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Ireturn} \PYG{n}{xrdp\PYGZus{}listen\PYGZus{}fork}\PYG{p}{(}\PYG{n}{lis}\PYG{p}{,} \PYG{n}{new\PYGZus{}self}\PYG{p}{);}
+    \PYG{p}{\PYGZcb{}}
+
+    \PYG{n}{process} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}process\PYGZus{}create}\PYG{p}{(}\PYG{n}{lis}\PYG{p}{,} \PYG{n}{lis}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{pro\PYGZus{}done\PYGZus{}event}\PYG{p}{);}\PYG{c+c1}{// 使用了多线程模型}
+
+    \PYG{k}{if} \PYG{p}{(}\PYG{n}{xrdp\PYGZus{}listen\PYGZus{}add\PYGZus{}pro}\PYG{p}{(}\PYG{n}{lis}\PYG{p}{,} \PYG{n}{process}\PYG{p}{)} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{p}{\PYGZob{}}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{I}\PYG{c+cm}{/* start thread */}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Iprocess}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{server\PYGZus{}trans} \PYG{o}{=} \PYG{n}{new\PYGZus{}self}\PYG{p}{;} \PYG{c+c1}{//}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Ig\PYGZus{}process} \PYG{o}{=} \PYG{n}{process}\PYG{p}{;}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Itc\PYGZus{}thread\PYGZus{}create}\PYG{p}{(}\PYG{n}{xrdp\PYGZus{}process\PYGZus{}run}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{);} \PYG{c+c1}{// 建立新的线程}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Itc\PYGZus{}sem\PYGZus{}dec}\PYG{p}{(}\PYG{n}{g\PYGZus{}process\PYGZus{}sem}\PYG{p}{);} \PYG{c+cm}{/* this will wait */}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{k}{else}
+    \PYG{p}{\PYGZob{}}
+\PYG{o}{\PYGZca{}\PYGZca{}}\PYG{n}{Ixrdp\PYGZus{}process\PYGZus{}delete}\PYG{p}{(}\PYG{n}{process}\PYG{p}{);}
+    \PYG{p}{\PYGZcb{}}
+
+    \PYG{k}{return} \PYG{l+m+mi}{0}\PYG{p}{;}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

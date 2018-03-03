@@ -1,0 +1,9 @@
+#+TITLE: Guacamole协议阶段开发总结
+#+DATE: 2018-01-11
+#+LAYOUT: post
+#+TAGS: Guacamole
+#+CATEGORIES: Guacamole
+
+* Apache和Tomcat的关系
+  Tomcat 用于解析jsp和servlet等，
+* 

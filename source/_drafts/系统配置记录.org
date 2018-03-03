@@ -1,0 +1,41 @@
+#+TITLE: 系统配置记录
+#+DATE: 2018-02-16
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* 前言
+  本文主要为了把系统的配置记录下来，方便之后重装系统的时候可以很快完成配置。
+* zsh
+  过去一直使用fish，就UI来说fish初始状态比zsh好了不知多少，不过fish终归只是个半成品，不支持bash的语法是一个硬伤，被坑了几次之后终于还是决定换成zsh，只是需要做一些额外的配置，使其能像fish一样易用。
+** 安装oh-my-zsh
+   虽然oh-my-zsh有时会比较慢，不过就我目前的使用场景来说还是问题不大，所以方便起见就先安装oh-my-zsh了。
+   在bash或者默认的zsh上运行下面命令：
+   #+BEGIN_SRC sh
+     sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+   #+END_SRC
+** 色彩高亮
+   fish的一个重要的功能是可以在你输入错误或者不存在的命令的时候把该命令标成红色，这样其实不必到运行的时候才知道命令不存在。zsh里面相应的插件叫做zsh-syntax-highlighting。
+   在安装完oh-my-zsh之后运行如下命令：
+   #+BEGIN_SRC sh
+     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+   #+END_SRC
+   之后修改文件~/.zshrc ：
+   #+BEGIN_SRC sh
+     plugins=( [plugins...] zsh-syntax-highlighting)
+   #+END_SRC
+   重启zsh或者运行命令：
+   #+BEGIN_SRC sh
+   source ~/.zshrc
+   #+END_SRC
+** TODO 命令提示
+   命令提示和自动补全功能是两个独立的功能，但是命令提示要有用得多，也是我使用fish的一个重要原因。对于zsh也有人开发了这个功能，当然也是仿照fish的。这个插件叫zsh-autosuggestions
+
+** 快捷键
+   由于是从fish转移到zsh上的，所以习惯上还是fish的，快捷键也需要做点修改，在～/zshrc文件里添加下列命令：
+   #+BEGIN_SRC sh
+     bindkey '^p' up-line-or-beginning-search
+     bindkey '^n' down-line-or-beginning-search
+   #+END_SRC
+* 参考
+  - [[https://ohmyz.sh/][oh-my-zsh官网]]

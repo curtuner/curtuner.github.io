@@ -1,0 +1,121 @@
+#+TITLE: Linux模块的知识
+#+DATE: 2017-08-11
+#+LAYOUT: post
+#+TAGS: Linux
+#+CATEGORIES: Linux
+
+* 前言
+* hello模块示例
+  先尝试编写一个模块：
+  #+BEGIN_SRC C
+    #include <linux/module.h>
+
+    static int hello_init(void) {
+	printk(KERN_ALERT "Hello, world\n");
+	return 0;
+    }
+
+    static void hello_exit(void) {
+	printk(KERN_ALERT "goodbye, world\n");
+    }
+
+    module_init(hello_init);
+    module_exit(hello_exit);
+
+    MODULE_LICENSE("GPL");
+  #+END_SRC
+  module注册的初始化函数要求类型是int (*)(void)的。这个模块的功能是在加载的时候打印hello world，而在卸载的时候打印goodbye。另一方面，内核模块的编译不同域普通程序。以下是Makefile：
+  #+BEGIN_SRC makefile
+    obj-m := hello.o
+
+    all:
+	    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
+    clean:
+	    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+
+  #+END_SRC
+  要注意的是/lib/modules/$(shell uname -r)/build一般系统默认是不存在的，所以需要安装：
+  #+BEGIN_SRC sh
+  pacman -S linux-headers
+  #+END_SRC
+* 重要的数据结构
+** file结构
+   这是一个在用户空间无法看到的一个结构
+* 字符设备驱动编写实例
+  其中定义了结构和相关的
+* 在/proc建立虚拟文件
+  /proc是内核导出的的一个虚拟文件系统，是古老的用户态和内核态交换数据的方式(通过read和write操作)，设定proc文件的接口已经改变了，所以必须要设置，这个需要注意。1
+  一般这类文件是模拟的是只读的文件，使用/proc的模块必须使用<linux/proc_fs>。模块必须实现一个函数，这样我们读取该文件时，读取请求也会发送到这个模块。实际调用的是模块定义的一个函数，接口是:
+  #+BEGIN_SRC C
+    int (*read_proc)(char* page, char** char, off_t offset, int count,
+		     int* eof, void* data);
+  #+END_SRC
+  创建和删除proc文件（包括目录文件）的接口分别是 ~proc_create()~ 和 ~proc_remove()~ 理解
+
+** 用户空间和内核空间传递数据 
+*** get_user
+    
+* 实用函数
+** kmalloc和kfree
+   这两个函数是用于内核模块分配内存使用的，它的特点是得到的内存是在物理上连续的。
+** 关闭中断和打开中断
+   一般情况下使用local_irq_save(flags)和local_irq_restore(flags)这两个宏来分别关闭和打开中断，flags是当前中断状态。当然还提供了无条件打开和关闭中断的方法，但是其实很少使用，分别是local_irq_disable(void)和local_irq_enable(void).
+
+* 时间、延迟及延缓操作
+  内核通过定时器中断来跟踪时间流。时钟中断由系统定时硬件以周期性的间隔产生，这个间隔根据HZ的值设定，HZ是频率的意思，代表每秒中断几次。HZ不同平台上不同，不应该有所假定，使用默认值即可。如果要修改HZ就要重新编译一遍内核了。
+  jiffies_64是内核的计数器，它的值是自从上次操作系统引导以来的时钟滴答数数，我们一般使用jiffies变量来访问它，因为足够块。当然这个变量是会溢出的。用户程序虽然也可以获得HZ的值，但实际上这个值被设定100，相应的于时间相关的函数也已经做了转化。
+** 定时器api
+   #+BEGIN_SRC C
+     #include <linux/timer.h>
+     struct timer_list {
+	 /*...*/
+	 unsigned long expires;
+	 void (*function)(unsigned long);
+	 unsigned long data; // function指向的函数的参数
+     };
+
+     void init_timer();
+     void mod_time(struct timer_list* timer, unsigned long expires);
+   #+END_SRC
+   其中mod_timer用于修改一个已经调度的定时器的到期时间，
+   del_timer用于在定时器到期前禁止一个已注册的定时器。有些
+   del_timer_sync 在单核时和del_timer行为相同，多核时要使用前者，所以我们在代码中一般要使用前者
+* 设备驱动
+  主设备号标识设备的驱动，现代Linux允许多个驱动程序对应一个设备号，但一般还是一个驱动对应一个设备号的原则。次设备号是设备本地数组的索引，可以获得指向内核设备的直接指针，用于获得实际实现的设备。
+  设备类型dev_t在<linux/types.h>中定义，目前是32位，主设备号占12位，次设备号占10位，获取编号的方法是:
+  #+BEGIN_SRC C
+  MAJOR(dev_t dev);
+  MINOR(dev_t dev);
+  #+END_SRC
+  构造设备号的方法是：
+  #+BEGIN_SRC C
+  MKDEV(int major, int minor);
+  #+END_SRC
+* 网络驱动程序
+  网络接口不像其他设备，在/dev下没有对应的节点。网络接口异步地处理数据包。一般而言，网络世界中，网络接口和协议能理解的最小单元叫octet，它是8个数据位。数据经过协议栈是会被打上不同的协议头。
+  网络设备和驱动设备最重要的不同是：块设备只响应来自内核的请求，而网络驱动程序异步地接收来自外部的数据包。内核每次处理的是一个数据包。
+** 连接到内核
+   网络接口没有设备号的说法，那么它仍然需要被
+** 数据包传输
+   传输是指将数据包通过网络连接发送出去的行为，内核要发送一个数据包时，它会自动调用驱动程序的hard_start_transmit函数将数据放入外发队列。内核处理的每个数据包都放在sk_buff中，结构定义于<linux/skbuff>中。
+   当sk_buff的的出口设备，下一跳地址，以及链路层的地址填充后，最终发送数据时，就会调用该函数来dev_queue_xmit函数，该函数是驱动程序执行传输的接口。不同的设备驱动程序实现不同。
+* 内核通知链   
+  Linux内核的子系统相互依赖，当某些子系统的状态发生改变时，需要提供机制通知其他子系统，以便其他子系统采取相应的措施，于是有了通知链（notification chain）。Linux网络子系统的通知链有三个，ipv4地址变化
+* 零散
+  - THIS_MODULE代表这个模块对象的地址，它是在编译是确定值的
+  - ssize_t 是signed size_t的意思
+  - 内核源码中char __user* 的_user指的是，用于修饰用户区的指针，内核态可以访问用户内存，但是用户态内存是不可靠的，所以要特别处理，这个应该是告诉编译器的。
+  - 一般编写使用系统调用的时候，我们只是解析错误码，但是在编写内核程序的时候，我们需要自己涉及错误码，确定要返回的错误码。
+  - 为什么说每个网络数据包属于更高的网络层的某个套接字
+  - 一个设备接口被定义为以太网接口的优点是可以调用tcpdump来查看数据包。
+  - ~list_for_each(pos, head)~ 用于遍历链表，pos作为循环变量，同时head是头节点，指向链表第一个节点，同时被最后一个节点指向
+  - 内核主要通过两种方法和进程打交道，一种是通过设备文件，一种是通过proc文件系统。
+  - 所有的设备都是由mknod，
+  - 内核中的代码有三个调用在三种情况下会被调用:
+    1) 进程通过系统调用（异常）
+    2) 中断
+    3) 被内核其他代码调用
+  - C语言没有封装，所以有时即使我们不想变量被使用也不可能
+* 参考
+  - 《Linux设备驱动程序》

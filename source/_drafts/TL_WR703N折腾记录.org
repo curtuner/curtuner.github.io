@@ -1,0 +1,81 @@
+#+TITLE: TL_WR703N折腾记录
+#+DATE: 2017-06-02
+#+LAYOUT: post
+#+TAGS: OpenWrt
+#+CATEGORIES: OpenWrt
+
+* 前言
+  想留下痕迹而已。。。
+* TL-WR703N
+  使用4M的flash
+* 获取源码
+  OpenWrt是一个用于嵌入式设备的Linux系统，可以使用opkg包管理系统拓展功能（另一个方法，是linux的驱动管理系统也提供类似的功能）
+  #+BEGIN_SRC sh
+  git clone https://github.com/openwrt/openwrt.git
+  #+END_SRC
+* opkg 包管理系统
+  它和ubuntu的apt-get以及Arch的pacman是同等的存在，只是它并不能直接下载软件包，要自己写入合适的软件包。
+  主要使用方法：
+  #+BEGIN_SRC sh
+  # 查看帮助
+  opkg help
+  # 更新数据库
+  opkg update
+  # 列出已安装的包
+  opkg list-installed
+  #+END_SRC
+* TODO 源码基本结构概要
+** TODO 原始目录
+   - target：不同平台在这个目录定义编译firmware和kernel的过程
+   - package：包含针对各个软件包的Makefile，各软件参照这个模板定义了自己的信息，如软件包的版本、下载地址、编译方式、安装地址等，要注意的一点是其中包含内核包，和用户包
+   - feeds：OpenWrt环境所需要的软件包套件，feed指一系列软件包，这些软件包是通过一个统一的接口地址访问的，脚本./scripts/feeds 可以看作软件包套件管理器
+   - include：openwrt的Makefile都在这里
+   - tools：编译时host需要的工具
+   - toolchian：包含一些命令去获取kernel headers, C library, bin-utils, compiler, debugger
+** TODO 编译时生成的目录（不确定linux*是否正确）
+   - bin：编译完成后，firmware和ipk会放到此目录下
+   - dl：软件包下载后放在这个目录下
+   - script：一些Perl和Shell脚本
+   - build_dir：解压所有的压缩文件，并在这个目录下编译。其内包含三个目录
+     1) build_dir/host：用于编译在你要host上运行的程序（有时需要特定的版本）
+     2) build_dir/linux*：用于编译内核的运行在内核态的软件包，新版的openwrt有将两种软件包分开了
+     3) build_dir/target*：用于编译各个软件包
+     4) build_dir/toolchain：用于编译交叉C编译器和C标准库
+   - staging_dir：在build_dir中编译的软件和工具链最终安装到这里，包含编译好的target工具链和主机的工具链，还有根文件系统
+     1) staging_dir/host：一个迷你的Linux根文件系统，可以认为之后的编译过程使用该根文件系统
+     2) staging_dir/toolchain*：也是一个mini的Linux根文件系统，包含交叉编译的工具链
+     3) staging_dir/target*：包含根文件系统staging_dir/target/root*目录和生成包以及开发包的工具
+	staging_dir/target/root* 用于生成ipk文件，
+** ar71xx
+   AR71XX指从AR7130开始的一系列兼容CPU，包含AR7130 AR7141 AR7161 AR724X AR913X AR9331 AR934X QCA953X QCA955X QCA956X
+* 常用接口
+  #+BEGIN_SRC C
+  int do_system( char *command, int i_debug )
+  #+END_SRC
+  第一个参数是shell命令，当i_debug非0时，将命令打印出来
+* 从源码编译固件
+  大体上，从源码的目录结构我们可以发现，编译可以分成三个阶段
+  1) 编译host，构造一个mini主机，它带有相应版本的软件
+  2) 编译toolchain
+  3) 编译出目标根文件系统，并压缩成firmware
+  以上其实也揭示了lfs编译的方式
+* 合成固件的方式
+  首先，核心的东西是内核，内核源码编译后得到相应的elf文件，可以用objcopy将不必要的信息出去，剩下代码和数据，在将该部分压缩，之后作为数据，在运行时解压。可以用一个elf文件包装，之后与其他文件链接得到vmlinux.elf
+  编译内核完成，内核本身不是elf文件格式，
+* 刷入OpenWrt
+** 建立TFTP服务器
+   OpenWrt官网提供了编译好的WR703N固件，所以可以
+* 要点
+  虽然编译内核源码后的文件是elf文件格式，实际用于启动的内核却不是，
+  TARGET_DIR 在staging目录中
+* 参考
+  - [[http://www.dreamxu.com/compile-your-own-openwrt/][编译自己的OpenWrt固件]]
+  - [[http://blog.csdn.net/clirus/article/details/50496958][ openwrt源码框架解析]]
+  - [[https://linuxtoy.org/archives/howto-install-openwrt-on-tl-wr703n.html][折腾：给 TL-WR703N 安装 OpenWrt]]
+  - [[https://gist.github.com/ninehills/2627163][WR703N OpenWrt 配置流程]]
+  - [[https://wiki.openwrt.org/zh-cn/doc/techref/opkg][OpenWrt opkg]]
+  - [[https://stackoverflow.com/questions/26030670/openwrt-buildroot-build-dir-and-staging-dir][openwrt buildroot build_dir and staging_dir]]
+  - [[https://wiki.openwrt.org/toh/tp-link/tl-wr703n][tl-wr703n openwrt文档]]
+  - [[https://wiki.archlinux.org/index.php/TFTP][Archlinux tftp文档]]
+  - [[http://www.openwrtdl.com/wordpress/openwrt%E7%94%9F%E6%88%90%E5%9B%BA%E4%BB%B6firmware%E6%B5%81%E7%A8%8B][生成固件的流程]]
+    

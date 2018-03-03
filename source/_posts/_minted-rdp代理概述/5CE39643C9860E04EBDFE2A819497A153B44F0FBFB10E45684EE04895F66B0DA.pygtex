@@ -1,0 +1,17 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}session}
+\PYG{p}{\PYGZob{}}
+    \PYG{n}{tintptr} \PYG{n}{id}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{trans} \PYG{o}{*}\PYG{n}{trans}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{p}{(}\PYG{o}{*}\PYG{n}{callback}\PYG{p}{)(}\PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{id}\PYG{p}{,} \PYG{k+kt}{int} \PYG{n}{msg}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param1}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param2}\PYG{p}{,}
+		    \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param3}\PYG{p}{,} \PYG{k+kt}{intptr\PYGZus{}t} \PYG{n}{param4}\PYG{p}{);}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{rdp}\PYG{p}{;}
+    \PYG{k+kt}{void} \PYG{o}{*}\PYG{n}{orders}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}client\PYGZus{}info} \PYG{o}{*}\PYG{n}{client\PYGZus{}info}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{up\PYGZus{}and\PYGZus{}running}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{p}{(}\PYG{o}{*}\PYG{n}{is\PYGZus{}term}\PYG{p}{)(}\PYG{k+kt}{void}\PYG{p}{);}
+    \PYG{k+kt}{int} \PYG{n}{in\PYGZus{}process\PYGZus{}data}\PYG{p}{;} \PYG{c+cm}{/* inc / dec libxrdp\PYGZus{}process\PYGZus{}data calls */}
+
+    \PYG{k}{struct} \PYG{n}{source\PYGZus{}info} \PYG{n}{si}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+\end{Verbatim}

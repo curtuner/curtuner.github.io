@@ -1,0 +1,8 @@
+#+TITLE: cuda编程
+#+DATE: 2017-10-08
+#+LAYOUT: post
+#+TAGS: CUDA
+#+CATEGORIES: CUDA
+
+* 零散
+  - 内核函数是指只能在GPU运行而不能在CPU运行的程序

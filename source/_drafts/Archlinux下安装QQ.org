@@ -1,0 +1,18 @@
+#+TITLE: Archlinux下安装QQ
+#+DATE: 2017-05-10
+#+LAYOUT: post
+#+TAGS: Archlinux, wine QQ
+#+CATEGORIES: wine QQ
+
+* 步骤
+  #+BEGIN_SRC sh
+  sudo pacman -S wine
+  sudo pacman -S winetricks
+  sudo pacman -S wine-mono
+  sudo pacman -S wine_gecko
+  WINEARCH=win32 winetricks qq
+  #+END_SRC
+  其中最后一条不一定有效，这是可以用清风老师的方案来代替
+* 参考
+  - [[https://linux.cn/article-5883-rss.html][Arch Linux 下的 QQ 解决方案 ]]
+  - [[http://phpcj.org/wineqq/][清风老师的方案]]

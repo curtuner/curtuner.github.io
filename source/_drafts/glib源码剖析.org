@@ -1,0 +1,81 @@
+#+TITLE: glib源码剖析
+#+DATE: 2017-09-26
+#+LAYOUT: post
+#+TAGS: algorithm
+#+CATEGORIES: algorithm
+
+* GHashTable
+** GHashTable的内部定义
+   这里的GHashTable没有私有数据，外部无法获知其状态，只能通过接口来调用。对应面向对象也就是数据的封装，可以看作是一个没有共有数据的类。对于库编写者来说，了解内部实现是必要的：
+   #+BEGIN_SRC C
+     struct _GHashTable
+     {
+       gint             size; // Hash表的容量
+       gint             mod; 
+       guint            mask;
+       gint             nnodes; // 但前插入节点的数目
+       gint             noccupied;  /* nnodes + tombstones */
+
+       gpointer        *keys;
+       guint           *hashes;
+       gpointer        *values;
+
+       GHashFunc        hash_func;
+       GEqualFunc       key_equal_func;
+       gint             ref_count;
+     #ifndef G_DISABLE_ASSERT
+       /*
+	,* Tracks the structure of the hash table, not its contents: is only
+	,* incremented when a node is added or removed (is not incremented
+	,* when the key or data of a node is modified).
+	,*/
+       int              version;
+     #endif
+       GDestroyNotify   key_destroy_func;
+       GDestroyNotify   value_destroy_func;
+     };
+   #+END_SRC
+   可以看到作为一个通用的Hash表，key和value都只能是指针。
+** 初始化
+   glib使用 ~g_hash_table_new_full~ 来初始化，除此之外，还提供了接口更为简单的包装函数 ~g_hash_table_new~ 
+   #+BEGIN_SRC C
+     GHashTable *
+     g_hash_table_new_full (GHashFunc      hash_func,
+			    GEqualFunc     key_equal_func,
+			    GDestroyNotify key_destroy_func,
+			    GDestroyNotify value_destroy_func)
+     {
+       GHashTable *hash_table;
+
+       hash_table = g_slice_new (GHashTable);
+       g_hash_table_set_shift (hash_table, HASH_TABLE_MIN_SHIFT);
+       hash_table->nnodes             = 0;
+       hash_table->noccupied          = 0;
+       hash_table->hash_func          = hash_func ? hash_func : g_direct_hash;
+       hash_table->key_equal_func     = key_equal_func;
+       hash_table->ref_count          = 1;
+     #ifndef G_DISABLE_ASSERT
+       hash_table->version            = 0;
+     #endif
+       hash_table->key_destroy_func   = key_destroy_func;
+       hash_table->value_destroy_func = value_destroy_func;
+       hash_table->keys               = g_new0 (gpointer, hash_table->size);
+       hash_table->values             = hash_table->keys;
+       hash_table->hashes             = g_new0 (guint, hash_table->size);
+
+       return hash_table;
+     }
+   #+END_SRC
+   可以看到keys和values初始化为同一个，
+** 查询
+   
+* garray
+** 前言
+   glib的提供了可变长的数组，这就意味着它会类似于STL的vector。虽说如此，但依旧值得一看。值得一提的是。
+* 零散
+  - 提取共有部分作为单一对象使用，通用指针，都是可行的技巧，例如PyObject, GArray都可以看作基类，在实际使用过程其实用的是作为指针类型。
+** 零散的宏
+* TODO 问题 [%]
+  - [ ] GHashTable中的mod和mask有何不同？
+
+   

@@ -1,0 +1,14 @@
+#+TITLE: 使用mu4e收发邮件记录
+#+DATE: 2017-05-10
+#+LAYOUT: post
+#+TAGS: Emacs, mu4e
+#+CATEGORIES: mu4e
+
+* 引言
+  Linux下一直没有找到满意的邮件客户端，只能用Emacs的mu4e。唉～
+* 收取邮件
+  获取邮件的工具叫offlineimap，协议的格式与处理方式呈现强相关的特点。而这个文件的格式显示了这更应该看作一个树形结构。
+* 安装
+  mu4e是mu的Emacs客户端
+* 参考
+  - [[http://coldnew.github.io/6a7aa5c1/][在 emacs 下使用 mu4e 收發郵件]]

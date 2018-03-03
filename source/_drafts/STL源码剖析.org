@@ -1,0 +1,20 @@
+#+TITLE: 《STL源码剖析》笔记
+#+DATE: 2016-12-24
+#+LAYOUT: post
+#+TAGS: C++
+#+CATEGORIES: C++
+
+* 前言
+  候捷的《STL源码剖析》里提到的
+* 基本概念
+  #+BEGIN_SRC C++
+    #include <iostream>
+
+    int main(int argc, char *argv[])
+    {
+        cout << "he";
+        return 0;
+    }
+  #+END_SRC
+* hashtable
+  

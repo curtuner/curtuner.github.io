@@ -1,0 +1,40 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{c+cm}{/* rdp listener */}
+\PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}listen}
+\PYG{p}{\PYGZob{}}
+  \PYG{k+kt}{int} \PYG{n}{status}\PYG{p}{;}
+  \PYG{k}{struct} \PYG{n}{trans}\PYG{o}{*} \PYG{n}{listen\PYGZus{}trans}\PYG{p}{;} \PYG{c+cm}{/* in tcp listen mode */}
+  \PYG{k}{struct} \PYG{n}{list}\PYG{o}{*} \PYG{n}{process\PYGZus{}list}\PYG{p}{;}
+  \PYG{n}{tbus} \PYG{n}{pro\PYGZus{}done\PYGZus{}event}\PYG{p}{;}
+  \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}startup\PYGZus{}params}\PYG{o}{*} \PYG{n}{startup\PYGZus{}params}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+
+\PYG{k}{struct} \PYG{n}{trans}
+\PYG{p}{\PYGZob{}}
+    \PYG{n}{tbus} \PYG{n}{sck}\PYG{p}{;} \PYG{c+cm}{/* socket handle */}
+    \PYG{k+kt}{int} \PYG{n}{mode}\PYG{p}{;} \PYG{c+cm}{/* 1 tcp, 2 unix socket */}
+    \PYG{k+kt}{int} \PYG{n}{status}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{type1}\PYG{p}{;} \PYG{c+cm}{/* 1 listener 2 server 3 client */}
+    \PYG{n}{ttrans\PYGZus{}data\PYGZus{}in} \PYG{n}{trans\PYGZus{}data\PYGZus{}in}\PYG{p}{;}
+    \PYG{n}{ttrans\PYGZus{}conn\PYGZus{}in} \PYG{n}{trans\PYGZus{}conn\PYGZus{}in}\PYG{p}{;}
+    \PYG{k+kt}{void}\PYG{o}{*} \PYG{n}{callback\PYGZus{}data}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{header\PYGZus{}size}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{stream}\PYG{o}{*} \PYG{n}{in\PYGZus{}s}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{stream}\PYG{o}{*} \PYG{n}{out\PYGZus{}s}\PYG{p}{;}
+    \PYG{k+kt}{char}\PYG{o}{*} \PYG{n}{listen\PYGZus{}filename}\PYG{p}{;}
+    \PYG{n}{tis\PYGZus{}term} \PYG{n}{is\PYGZus{}term}\PYG{p}{;} \PYG{c+cm}{/* used to test for exit */}
+    \PYG{k}{struct} \PYG{n}{stream}\PYG{o}{*} \PYG{n}{wait\PYGZus{}s}\PYG{p}{;}
+    \PYG{k+kt}{char} \PYG{n}{addr}\PYG{p}{[}\PYG{l+m+mi}{256}\PYG{p}{];}
+    \PYG{k+kt}{char} \PYG{n}{port}\PYG{p}{[}\PYG{l+m+mi}{256}\PYG{p}{];}
+    \PYG{k+kt}{int} \PYG{n}{no\PYGZus{}stream\PYGZus{}init\PYGZus{}on\PYGZus{}data\PYGZus{}in}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{extra\PYGZus{}flags}\PYG{p}{;} \PYG{c+cm}{/* user defined */}
+    \PYG{k}{struct} \PYG{n}{ssl\PYGZus{}tls} \PYG{o}{*}\PYG{n}{tls}\PYG{p}{;}
+    \PYG{k}{const} \PYG{k+kt}{char} \PYG{o}{*}\PYG{n}{ssl\PYGZus{}protocol}\PYG{p}{;} \PYG{c+cm}{/* e.g. TLSv1, TLSv1.1, TLSv1.2, unknown */}
+    \PYG{k}{const} \PYG{k+kt}{char} \PYG{o}{*}\PYG{n}{cipher\PYGZus{}name}\PYG{p}{;}  \PYG{c+cm}{/* e.g. AES256\PYGZhy{}GCM\PYGZhy{}SHA384 */}
+    \PYG{n}{trans\PYGZus{}recv\PYGZus{}proc} \PYG{n}{trans\PYGZus{}recv}\PYG{p}{;}
+    \PYG{n}{trans\PYGZus{}send\PYGZus{}proc} \PYG{n}{trans\PYGZus{}send}\PYG{p}{;}
+    \PYG{n}{trans\PYGZus{}can\PYGZus{}recv\PYGZus{}proc} \PYG{n}{trans\PYGZus{}can\PYGZus{}recv}\PYG{p}{;}
+    \PYG{k}{struct} \PYG{n}{source\PYGZus{}info} \PYG{o}{*}\PYG{n}{si}\PYG{p}{;}
+    \PYG{k+kt}{int} \PYG{n}{my\PYGZus{}source}\PYG{p}{;}
+\PYG{p}{\PYGZcb{};}
+\end{Verbatim}

@@ -1,0 +1,17 @@
+#+TITLE: 虚拟机设计
+#+DATE: 2017-09-23
+#+LAYOUT: post
+#+TAGS: 虚拟机
+#+CATEGORIES: 虚拟机
+
+* 堆栈式虚拟机
+* 基于寄存器的虚拟机
+  基于寄存器的虚拟机的复杂度其实相对而言较低，
+* Python虚拟机
+** 线程对应的静态实体
+   可执行文件中机器指令序列
+** 要点
+   - 表示进程对象的PyInterpreterObject对象和表示线程的PythreadState对象
+   - Python虚拟机的具体实现在PyEval_EvalFrame
+** 可执行文件的内存表示
+   

@@ -1,0 +1,8 @@
+#+TITLE: Software Foundation 笔记
+#+DATE: 2017-05-23
+#+LAYOUT: post
+#+TAGS: Coq
+#+CATEGORIES: Coq
+
+* 基础：Coq中的函数式编程
+  

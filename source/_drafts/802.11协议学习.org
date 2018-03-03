@@ -1,0 +1,31 @@
+#+TITLE: 802.11协议学习
+#+DATE: 2017-03-20
+#+LAYOUT: post
+#+TAGS: Wifi
+#+CATEGORIES: Wifi
+
+* 主要问题
+  - 如何避免差的节点持续竞争信道
+* CSMA/CA（一种随机接入机制）
+** 基本过程描述
+   1) station有数据发送时，先等待DIFS时间，监听信道，如果空闲则进入backoff过程
+   2) 从contention window选择一个随机回退值，代表等待的slot time的数目，每经过一个slot time就监听一次信道，若空闲则随机回退值减一。
+   3) 随机回退值为零时，发送数据，AP在接收到数据之后，进行CRC校验，若通过则等待SIFS之后发送ACK帧
+   4) 当station收到相应的ACK帧后，传输完成。若ack time out，则认为失败，等待EIFS时间而不是DIFS之后进行BEB，重新开始backoff过程。
+** 理解
+   主要是随机接入和错误重传机制
+* 802.11各类帧
+** 使用iw监听无线网络
+   使用 iw 不仅可以实现和 iwconfig 完全一样的功能，而且它的用法要更丰富。我先用iw将新增一个虚拟网卡接口mon0,并将网卡mon0设置为监听模式：
+   #+BEGIN_SRC sh
+   iw dev wlan0 interface add mon0 type monitor
+   #+END_SRC
+   之后在启动网卡
+   #+BEGIN_SRC sh
+   ip link set mon0 up
+   #+END_SRC
+   之后就可以使用wireshark来捕获了
+* 要点
+  - 802.11的DCF模式和其核心的CSMA/CA模式
+* 参考
+  - [[http://www.aneasystone.com/archives/2016/08/wireless-analysis-one-monitoring.html][无线网络抓包]]

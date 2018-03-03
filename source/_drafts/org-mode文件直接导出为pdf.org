@@ -1,0 +1,21 @@
+#+TITLE: org-mode文件直接导出为pdf
+#+DATE: 2017-11-19
+#+LAYOUT: post
+#+TAGS: Documentation
+#+CATEGORIES: org
+
+* 前言
+  目前org文档已经可以比较方便地导出为html，但是对于导出成pdf上还是有很多问题，主要还是中文化的问题，所以必须手动改变一些配置。
+  本人使用的系统是Archlinux，Archlinux基本什么软件都比较新，我个人习惯直接全体更新，除非新版软件有问题才会回滚。
+* latex基本安装和配置
+** 前言
+   中文网络上的latex资料极度滞后，用百度很难搜到有益的资料。
+** minted宏包安装
+   minted宏包用于支持代码高亮，相比listings的一大好处是它默认支持彩色的高亮，而listings还要自己设置，同时minted支持的语言也极多。minted宏包的是借助一个Python库来达成代码高亮效果的，这个库叫做pygments，目前minted使用的时Pythoon2版本，某些发行版可以直接安装，这里使用比较通用的安装方法：
+   #+BEGIN_SRC sh
+   pip2 install pygments
+   #+END_SRC
+   
+* 参考
+  - [[estions/15264/org-export-to-pdf-inserts-i-for-indentation-in-code][]
+  - [[https://emacs.stackexchange.com/questions/15264/org-export-to-pdf-inserts-i-for-indentation-in-code][使用minted嵌入代码导致的缩进问题]]解决

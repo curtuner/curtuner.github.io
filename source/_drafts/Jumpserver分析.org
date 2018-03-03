@@ -1,0 +1,72 @@
+#+TITLE: Jumpserver分析
+#+DATE: 2017-12-25
+#+LAYOUT: post
+#+TAGS: Jumpserver, Network
+#+CATEGORIES: Jumpserver
+
+* Jumpserver
+  jumpserver的版本其实比较新
+* Django
+** 信号
+   
+* Tornado服务器
+  比较重要的两个handler：
+  - tornado.web.FallbackHandler：
+  - 
+** tornado.web.FallbackHandler
+   这让用户可以同时在Tornado服务器中使用Tornado的Handler和WSGI应用，常规的用法是：
+   #+BEGIN_SRC python
+     wsgi_app = tornado.wsgi.WSGIContainer(
+         django.core.handlers.wsgi.WSGIHandler())
+     application = tornado.web.Application([
+         (r"/foo", FooHandler),
+         (r".*", FallbackHandler, dict(fallback=wsgi_app),
+     ])
+   #+END_SRC
+   这里其实可以看到Tornado要使用WSGI应用就需要先用WSGI容器包装称为Tornado应用。
+** tornado.web.StaticFileHandler
+   这个handler用于处理对静态文件的发送，本质上也是应该由Web服务器来处理。这个handler需要指定静态文件的路径：
+   #+BEGIN_SRC python
+     application = web.Application([
+         (r"/content/(.*)", web.StaticFileHandler, {"path": "/var/www"}),
+     ])
+   #+END_SRC
+** tornado.websocket.WebSocketHandler
+   这是处理websocket的handler，一般要通过Tornado来处理，WSGI没有位置连接的功能，所以要先通过这个handler，之后再由django来处理
+** django_request_support
+** websocket应用
+** Tornado和Django的边界
+** 在tornado中调用django应用
+   
+* 需要websocket的应用
+  这类应用比较特别，需要通过Tornado来处理这个连接，之后有tornado来处理逻辑。来处理逻辑
+  在原来
+* 关于多线程
+  
+* 目录结构
+** apps
+   这个是Django的开发目录，这个目录叫什么名字都可以，目录结构是：
+   - __init__.py：用于告知这是一个Python包，说明Jumpserver是用一个包来组织的
+   - manage.py：一个命令行处理程序，用于和Django交互
+   - jumpserver：
+* 部署
+  可以看到run_server.py里面静态文件的发送有Tornado来处理，但是如果使用nginx作为前端，则会使用nginx来处理。
+  本质上http到https的跳转是通过重定向的。
+** 使用Supervisor监控Tornado进程
+   Supervisor是一个使用Python写的进程管理程序
+   当运行多个Tornado进程时，就需要进行监控和控制。可以通过supervisor来完成。Supervisor的设计是每次开机时启动其配置文件中列出的进程。为了一个superrvisor有意义，至少需要有program部分。program部分中command命令是必须的，除此之外可以定义工作目录参数、有效用户和日志文件等。如果需要在进程异常关闭时自动重启时，还是可以设置autorestart为true。
+   为了管理所有的进程，创建一个组是必要的，之后我们也可以通过通配符来匹配成员名
+** 关于systemd和supervisor的问题
+   严格来说supervisor要轻量得多，但是功能上讲步入systemd，而且systemd的可靠性要高得多，配置一样简单，所以可以还是用systemd，当然如果主机不支持systemd就麻烦了。
+** Jumpserver的配置
+   可以看到Jumpserver并没有使用多个tornado实例，所以实际性能还有优化的空间。而且静态文件目前使用Tornado来提供，也可以使用nginx直接提供静态文件，性能上可以nginx表现会好一些。
+** 使用nginx的好处
+   内部测试可以直接看到http报文，而且可以建立
+* 要点
+  - tornado使用Django的方式很简单，用一个WSGI容器包装Django框架，这个容器对于Tornado是应用，需要通过其他的handler来间接调用
+* 问题 [%]
+  - [ ] Tornado对于静态文件的处理同nginx如何配合。
+  - [ ] get_argument和http的具体关系，真的是针对URL的吗。
+* 参考
+  - [[http://docs.pythontab.com/tornado/introduction-to-tornado/ch8.html][Tornado部署]]
+  - [[https://stackoverflow.com/questions/28522857/shall-i-use-websocket-on-ports-other-than-80][websocket使用的端口]]

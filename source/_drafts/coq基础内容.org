@@ -1,0 +1,19 @@
+#+TITLE: coq基础内容
+#+DATE: 2017-05-06
+#+LAYOUT: post
+#+TAGS: Coq
+#+CATEGORIES: Coq
+
+* 语法
+  - 要区分Type和类型
+  - coq可以想OCaml一样进行类型推导
+* 实例
+** 
+* 数据类型
+** 可枚举类型
+   严格来说是一种定义新的数据类型的机制，枚举类型一般要带有模式匹配才方便
+*** 
+* 工具
+  检验函数正确性
+* 参考
+  - Software Foundation

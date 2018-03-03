@@ -1,0 +1,16 @@
+#+TITLE: Tomcat简单介绍
+#+DATE: 2018-01-03
+#+LAYOUT: post
+#+TAGS: Tomcat
+#+CATEGORIES: Tomcat
+
+* 目录结构
+  一般CATALINE_HOME指的是Tomcat的安装目录，
+* 部署
+  Java服务端动态生成页面的方式是使用JSP，类似于Python Web框架的模板。JSP程序会被打包成一个war包，放在这个目录下面，服务器会自动解开这个包，并在这个目录下面生成同名的文件，
+
+* WebJar管理CSS、JavaScript文件
+  WebJar把通用的Web资源打包成Java的Jar数据包，然后借助maven工具管理，保证Web资源版本一致性，升级比较容易。类似于docker，有一个统一管理的网站，把web资源打包成了jar文件。
+  webjar字段控制
+* jar格式
+  jar文件是使用的zip压缩格式，当然内部包含特殊的文件

@@ -1,0 +1,12 @@
+#+TITLE: 一些标准的总结
+#+DATE: 2017-03-22
+#+LAYOUT: post
+#+TAGS: GIT
+#+CATEGORIES: GIT
+
+* IEEE 754
+* 网关协议
+** CGI
+   
+* 参考文献
+  - [[https://www.biaodianfu.com/cgi-fastcgi-wsgi.html][网关协议学习：CGI、FastCGI、WSGI]]

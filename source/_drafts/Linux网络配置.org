@@ -1,0 +1,55 @@
+#+TITLE: Linux网络配置
+#+DATE: 2017-08-08
+#+LAYOUT: post
+#+TAGS: Linux, network
+#+CATEGORIES: Linux
+
+* 前言
+  自从主流Linux发行版大都把net-tools换成了iproute2之后，偶尔想搜个命令都麻烦，所以还是记一下比较好。
+* iproute2 简述
+* 常用操作
+** 建立虚拟网卡
+   利用iproute2可以很容易做到：
+   #+BEGIN_SRC sh
+   ip link add link eth0 name mymon type nlmon
+   #+END_SRC
+   以上是以eth0作为物理接口，建立的名字叫做mymon的nlmon的接口。具体的可以直接
+** 查看arp表
+   #+BEGIN_SRC sh
+   ip neigh
+   #+END_SRC
+** 查看路由表
+   #+BEGIN_SRC sh
+   ip route
+   #+END_SRC
+** 设置默认路由
+   设置网卡eth0的默认路由是192.168.106.1
+   #+BEGIN_SRC sh
+   ip route add default via 192.168.106.1 dev eth0
+   #+END_SRC
+* 启动和关闭接口
+  5启动网络接口：
+  #+BEGIN_SRC sh
+  ip link set dev eth up
+  #+END_SRC
+  关闭网络接口：
+  #+BEGIN_SRC sh
+  ip link set dev eth0 down
+  #+END_SRC
+* 设置IP
+  启动网络接口：
+  #+BEGIN_SRC sh
+  ip link set dev eth up
+  #+END_SRC
+  关闭网络接口：
+  #+BEGIN_SRC sh
+  ip link set dev eth0 down
+  #+END_SRC
+* ARP表的操作
+  使用iproute2来查看arp表
+  #+BEGIN_SRC sh
+  ip neigh
+  #+END_SRC
+  在本地添加一个 *静态ARP项* 
+
+  

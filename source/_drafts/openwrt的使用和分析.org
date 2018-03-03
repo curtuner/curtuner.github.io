@@ -1,0 +1,52 @@
+#+TITLE: openwrt的使用和分析
+#+DATE: 2017-04-18
+#+LAYOUT: post
+#+TAGS: WiFi
+#+CATEGORIES: WiFi
+
+* vlan
+  vlan 二层交换机
+
+  - 首先access端口是指拥有一个和PVID标记相同的VID的物理端口，所以对于VID
+  - pvid决定了处理tag的过程，vlan则决定了taged和untaged的属性，一个trunk端口可以属于多个vlan,端口的vlan
+  - 是否允许打tag的数据包通过，以区分tag和untag, trunk值允许打tag
+  - vlan 是要阻止过度泛洪的方法，内部只有含共同的vlan的的端口才可以使用
+** 使用ssdk_sh来配置端口vlan
+   ssdk_sh的设置其实是switch芯片，CPU本身都内置一个switch芯片，但内置的不能满足要求，所以有一个独立的switch芯片，通过SGMII是PHY与MAC间。ssdk_sh提供了一种上层配置方式。
+   先增加一个vlan, vlan id 设为2
+   #+BEGIN_SRC sh
+   ssdk_sh vlan entry create 2
+   #+END_SRC
+   接下来设定端口号的vlan，或者说在vlan中加入端口（ssdk_sh更倾向这种想法），这里将端口2的vlanid设为2，并设为untaged（还可以有unmodified|tagged）
+   #+BEGIN_SRC sh
+   ssdk_sh vlan member add 2 2 untaged
+   #+END_SRC
+
+* 网络接口（包括物理的和虚拟的）
+** 物理网卡（网络配置器，Network Interface Card）
+   网卡由MAC芯片、PHY芯片和接口组成。MAC芯片实现MAC子层和LLC子层，提供符合规范的接口以实现 *和主机的数据交换* ，
+** 虚拟网卡
+  要查看但前计算机的网络设备可以直接使用ifconfig或者ip link来查看。其中虚拟网络接口是为了便于管理员配置基于linux的操作系统。一个虚拟网络接口一般与一个物理接口或其他虚拟网络接口相关。网卡设置为监听模式之后无法联网的问题，可以使用在该网卡上增加一个虚拟接口来实现。
+  - lo: 虚拟设备，回环网设备接口
+  - br-lan: lan网桥
+* 配置
+** 网络配置文件
+   #+BEGIN_QUOTE
+   /etc/config/network：该文件是网络配置文件，该文件包含了WAN、LAN、LOOPBACK(本机自身回环网),VLAN(虚拟局域网)的全部配置。即负责交换、接口和路由配置。
+   /etc/config/wireless：无线网络的配置文件，该文件包含了无线网络的协议，参数，速率等信息。
+   #+END_QUOTE
+   其中，'loopback'表示本机自环网配置段，'lan'表示LAN口配置，'wan'表示WAN口配置，switch表示VLAN配置(虚拟局域网)，switch_vlan表示VLAN1的参数。另外属于一般的端口属于物理端口。这里是swconfig是的switch vlan的配置风格。
+** 使用网络配置文件来配置vlan
+   首先，了解设备有几个可独立配置vlan口。使用swconfig风格的配置：
+   #+BEGIN_SRC sh
+   config 'switch'
+        option 'name' 'rtl8366s'
+        option 'reset' '1'
+        option 'enable_vlan' '1'
+   #+END_SRC
+   打开芯片的vlan功能，可以看到config 'switch'节是设置vlan功能的启动与否。switch
+* FAQ
+** TODO openwrt设备接口中WAN、LAN接口的区别？
+   首先Internet是WAN的一种，是最大的Internet。所以WAN口一般是连接Internet的接口。LAN口则是连接局域网的设备。除此之外WiFi口则是类似于LAN口
+** Port-Based Vlan和IEEE 802.1Q Vlan 的区别？
+   port base不打标签为

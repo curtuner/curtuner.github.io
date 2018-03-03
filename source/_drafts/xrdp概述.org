@@ -1,0 +1,653 @@
+#+TITLE: xrdp概述
+#+DATE: 2017-11-30
+#+LAYOUT: post
+#+TAGS: RDP, Network
+#+CATEGORIES: RDP
+#+OPTIONS: ^:nil
+
+* 前言
+  上次主要讲了对RDP协议的一些简单的理解，由于对于不熟悉图形绘制的人来说理解RDP协议会有不少困难。所以这次就不讲太多RDP协议的东西，转而讲一些大家比较熟悉的内容，接下来的内容主要有三个部分：
+  1) 远程桌面协议。
+  2) 远程桌面协议的代理。
+  3) 借助远程桌面协议模拟ssh和telnet代理。
+
+  很不幸，不得不再次简要介绍一下涉及的协议，首先要有点印象，否则讲到代理的部分有些名词会比较让人迷惑。
+* 远程桌面协议简述
+  Window上的远程协议一般是使用RDP，而Linux传统上更喜欢RFB[fn:1:VNC使用的协议](Remote Frame Buffer)。Web的话只要解决的浏览器双向通信的问题也可以支持某些远程桌面协议。借助websocket或者早期的HTTP tunnel以及JavaScript可以实现很多应用层的协议。有一点需要注意，JavaScript和Python一样同属解释型语言，逻辑上能做的事情是差不多的，只是前者受到浏览器的限制。
+** Linux图形协议
+   无论是Windows还是Linux都有图形桌面，但这两个区别比较大。这是在设计之初就决定的，Windows默认桌面是在一台主机上显示的，而Unix则默认桌面是可以远程显示的，图形的硬件也是可以远程的，所以X协议是client-server模式的。client-server模式带来了效率的下降，似乎还带来了一定的不稳定性。这也带来了一个结果，Windows早期并不能远程渲染，而Linux历来可以[fn:2:X manager就是这样的]。
+   步入了21世纪之后随着Linux对于桌面的重视程度上升，新一代的的桌面远程桌面协议Wayland也虽然也是client-server模式的，但也不再支持远程渲染了。之所以说这个是因为X协议的架构比特别，但我们其实可以不去深究，毕竟都被取代了。
+   Linux传统的远程桌面协议简称为X，目前这个标准出到了第11版，所以称为X11。
+** RDP
+   RDP协议（Remote Desktop Protocol），是微软开发的私有协议[fn:2:严格来说最早舒畅国际电信联盟设计的，后被微软收购]，让用户可以通过网络连接上远程的主机，并提供相应的图形界面。使用的时候，要求远程主机启动了RDP服务器，而本地使用RDP客户端连接。RDP默认会监听本机UDP和TCP端口3389[fn:3:xrdp默认只监听TCP端口]。目前大多数主流的操作系统都有RDP客户端软件，而RDP服务器软件少一点，但是Unix和OS X下也是有的。目前RDP协议已经出到10.0版[fn:4:历史版本包括4.0、5.0、5.1、5.2、6.0、6.1、7.0、8.0、8.1、10.0]了。值得一提的是早期微软并不公开RDP协议，所以可以看到网络上一些早期的对RDP协议的研究都是破解的结果。目前连接远程Windows主机一般使用RDP来实现，所以如果堡垒机管理的机器中包括Windows主机，就有必要实现RDP代理功能。相对的，Linux虽然目前也可以运行RDP服务器，但是Linux的图形界面一直不是很稳定（这几年更是处于从X协议转向Wayland的过程，而Wayland暂时不支持RDP），所以对于Linux来说支持RDP倒不是很要紧。
+** VNC
+   VNC (Virtual Network Console)是虚拟网络控制台的缩写。它是一款优秀的远程控制工具软件，由著名的 AT&T 的欧洲研究实验室开发的。VNC 是在基于 UNIX 和 Linux 操作系统的免费的开源软件，远程控制能力强大，高效实用，其性能可以和 Windows 和 MAC 中的任何远程控制软件媲美。 在 Linux 中，VNC 包括以下四个命令：vncserver，vncviewer，vncpasswd，和 vncconnect。大多数情况下用户只需要其中的两个命令：vncserver 和 vncviewer。
+   VNC和RDP是非常相似的协议,两者都比较高效
+** Guacamole协议
+   Guacamole协议是基于文本的远程桌面协议，之所以基于文本是为了方便JavaScript处理，同时它可以描述远程桌面的所有功能，是所有远程桌面协议的超集。也就是说远程桌面协议都可以翻译成Guacamole协议，Goacamole使用的协议格式。开发者只需要编写一个协议翻译器，作为文本协议，Guacamole协议数据可以很方便地处理和分析。同时也很方便扩展。比如哪天心情不好可以把文件协议弄进来什么的（目前其实已经这么做了）。
+** 小结
+   其实RDP和VNC是两个平台最常用的协议，除此之外还有大大小小很多其他的协议，但本质上只要是远程桌面协议，它们的能力就不会差太多。Guacamole协议就是利用了这一点设计的，所以之后如果要讲远程桌面协议这类图形的协议的话，会主要以Guacamole协议为例子（原因当然是不用了解二进制协议的各种细节）。另外，Guacamole和X协议依旧是不同级别的协议。
+* 远程桌面协议的代理
+** 远程远程桌面协议的代理方案
+   堡垒机预研首要解决的是协议代理的可行性。开源世界完成度比较高直接代理软件是xrdp，它的代理模式是如下结构的：
+
+  #+BEGIN_SRC dot :file xrdp概述/xrdpproxy.png :cmdline -Kdot -Tpng :exports results
+    digraph vncproxy {
+                rankdir = LR
+                node [shape = record]
+               
+                a [label = "RDP client"]
+                proxy [label = "{<p1> proxy| {<p2> libvnc | <p3> libx11 | <p4> librdp }}"]
+                c [label = "VNCserver"]
+                xserver [ label = "X client" ]
+                rdpserver [ label = "RDP server" ]
+
+                a -> proxy:p1 [label = "RDP packet"]
+                proxy -> a [label = "RDP packet"]
+                proxy:p2 -> c [label = "RFB packet"]
+                c -> proxy:p2 [label = "RFB packet"]
+
+                proxy:p3 -> xserver [label = "X packet" ]
+                xserver -> proxy:p3 [label = "X packet" ]
+                proxy:p4 -> rdpserver [ label = "RDP packet"]
+                rdpserver -> proxy:p4 [label="RDP packet"]
+                
+    }
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:xrdp概述/xrdpproxy.png]]
+  
+  这个和web代理有点相似，web代理是统一用HTTP客户端来访问代理服务器，而xrdp采用的模式则是统一用RDP客户端访问xrdp代理服务器。当然两者的区别在于支持的协议，web代理服务器支持的协议差别比较大（如ssh、ftp等截然不同的协议）。
+
+  另一方面，借助websocket协议或者HTTP tunnel，也可以统一使用web代理来代理RDP以及VNC这类的协议。
+
+  #+BEGIN_SRC dot :file xrdp概述/rdpwebproxy.png :cmdline -Kdot -Tpng :exports results
+    digraph vncproxy {
+                    rankdir = LR
+                    node [shape = record]
+                   
+                    a [label = "web browser"]
+                    proxy [label = "{<p1> web server| {<p2> libvnc | <p3> libx11 | <p4> librdp }}"]
+                    c [label = "VNCserver"]
+                    xserver [ label = "X client" ]
+                    rdpserver [ label = "RDP server" ]
+
+                    a -> proxy:p1 [label = "websocket packet"]
+                    proxy -> a [label = "websocket packet"]
+                    proxy:p2 -> c [label = "RFB packet"]
+                    c -> proxy:p2 [label = "RFB packet"]
+
+                    proxy:p3 -> xserver [label = "X packet" ]
+                    xserver -> proxy:p3 [label = "X packet" ]
+                    proxy:p4 -> rdpserver [ label = "RDP packet"]
+                    rdpserver -> proxy:p4 [label="RDP packet"]
+                    
+    }
+  #+END_SRC
+
+  #+RESULTS:
+  
+
+
+[[file:xrdp概述/rdpwebproxy.png]]
+  
+
+  这样做会有新的问题，比如JavaScript不擅长处理二进制数据，实现的协议栈可能不会太高效[fn:8:最新的浏览器其实有办法解决这个问题，不过不必考虑]。像Apache guacmole[fn:9:浏览器端]的选择是再次设计了一个适合浏览器处理的远程桌面协议。当然这样做的协议转化的恶工作量其实要比原先要大得多，xrdp实质上只需要处理RFB到RDP的转化就可以了。而guacmole还需要再处理RDP到Guacamole协议的转化，可能还有ssh或者telnet的转化。
+  
+  另外，直接代理的方案除了使用xrdp那种方案以外，还有专门的vnc代理软件，好处是可以通过VNC客户端直接访问。
+
+  #+BEGIN_SRC dot :file xrdp概述/vnc_proxy.png :cmdline -Kdot -Tpng :exports results
+    digraph vncproxy {
+             rankdir = LR
+             node [shape = record]
+             vnc_client [ label = "VNC client"]
+             vnc_proxy [label = "VNC proxy"]
+             vnc_server [label = "VNC server"]
+
+             vnc_client -> vnc_proxy
+             vnc_proxy -> vnc_client
+             vnc_proxy -> vnc_server
+             vnc_server -> vnc_proxy
+
+    }
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:xrdp概述/vnc_proxy.png]]
+
+  这样做也不会有问题，但单纯就直接代理而言，编程复杂度也能有所下降，但对于后期统一处理图形数据不利。
+** Guacamole的web代理方案
+   在浏览器支持了HTML5的websocket和canvas标签之后，远程桌面的web化的难点已经解决了（其实websocket也不是必须的）。Guacamole目前出到0.9.13，相比xrdp，其完成度要高得多，文档也要齐全得多。其架构值得学习。接下了是对第一篇文档的翻译，以及个人的一些解读。
+
+   Guacamole不是一个完备的web应用，而是由好几个部分组成的。该web应用旨在设计得简洁和最小化，把大部分杂活交给底层模块来完成。
+   
+   [[./xrdp概述/guaca.png]]
+   
+   用户通过浏览器连接到Guacamole。Guacamole由JavaScript编写，用户通过它来取得Guacamole服务器内部的web服务器的服务。客户端一旦加载，就会通过在HTTP之上的Guacamole使用服务器。web应用被部署到Guacamole服务器，它接受Guacamole协议数据并转发到guacd，这是最原始的Guacamole代理。Guacamole协议和guacd程序提供了一个抽象：Guacamole客户端和web应用都不需要知道实际使用的远程桌面协议。
+*** Guacamole协议
+    web应用完全不需要知道任何远程桌面协议，它不包含对包括RDP、VNC在内的任何Guaciamole栈支持的协议的支持。实际上，web应用程序只需要知道Guacamole协议，这个协议是用于远程显示的渲染和事件的传输。一个有这种特征的协议自然会和远程桌面协议有相同的能力，当然远程桌面协议的设计原则和Guacamole还是不同的：Guacamole协议并不是为了实现特定桌面环境才有的功能。
+
+    作为一个远程显示和交互的协议，Guacamole实现了一个已有的远程桌面协议功能的超集。因此，在为Guacamole增加对特定远程桌面协议（如RDP）的支持时，就会涉及到编写一个“中间层”来实现远程桌面协议和Guacamole协议的“翻译”。完成这种“翻译”的难度不会比实现任何原始的客户端难，除了这个实现是呈现给远程显示器的而不是本地的那个。
+*** guacd
+    guacd和所有客户端插件都依赖于common库、libguac库，它们让程序通过Guacamole协议通信变得更加容易，也提升了一点抽象程度。
+*** web应用程序
+    用户和Guacamole实际交互的部分是web应用。
+
+    这个web应用就像之前提到的，没有实现任何远程桌面协议。它依赖于guacd，并且只实现了整洁的web接口和认证层。我们使用Java来实现server端的web应用，但并不是非要使用Java来编写。实际上，Guacamole旨在称为一套API，这也是我们鼓励的。
+*** 远程桌面网关
+    只要开发者学过HTML5的canvas标签并知道这个已经被Firefox和Chrome实现，一个用Javascript编写VNC客户端就不再是纸上谈兵了。
+** xrdp的直接代理方案
+   xrdp支持的都是桌面或者远程桌面协议。如果服务器都是Linux，由于X协议是Linux目前最基本的图形桌面协议，所以其结构可以进一步细化：
+  
+    #+BEGIN_SRC dot :file xrdp概述/xrdpproxy_linux.png :cmdline -Kdot -Tpng :exports results
+      digraph vncproxy {
+                  rankdir = LR
+                  node [shape = record]
+                 
+                  a [label = "RDP client"]
+                  proxy [label = "{<p1> proxy| {<p2> libvnc | <p3> libx11 | <p4> librdp }}"]
+                  c [label = "{<p1> VNCserver | <p2> X server}"]
+                  xserver [ label = "X client" ]
+                  rdpserver [ label = "{<p1> RDP server | <p2> VNC server |<p3> X server}" ]
+
+                  xclient1 [label = "X client"]
+                  xclient2 [label = "X client"]
+
+                  a -> proxy:p1 [label = "RDP packet"]
+                  proxy -> a [label = "RDP packet"]
+                  proxy:p2 -> c:p1 [label = "RFB packet"]
+                  c:p1 -> proxy:p2 [label = "RFB packet"]
+
+                  proxy:p3 -> xserver [label = "X packet" ]
+                  xserver -> proxy:p3 [label = "X packet" ]
+                  proxy:p4 -> rdpserver:p1 [ label = "RDP packet"]
+                  rdpserver:p1 -> proxy:p4 [label="RDP packet"]
+
+                  xclient1 -> c:p2 [label = "X packet"]
+                  c:p2 -> xclient1 [label = "X packet"]
+
+                  xclient2 -> rdpserver:p3 [label = "X packet"]
+                  rdpserver:p3 -> xclient2 [label = "X packet"]
+
+                  
+      }
+    #+END_SRC
+
+    #+RESULTS:
+    [[file:xrdp概述/xrdpproxy_linux.png]]
+
+    X协议是Linux绘制桌面最基本的协议，而VNC和RDP都只是传输桌面数据的协议而已，VNC server和RDP server的运行必须要有一个运行中的X server。VNC协议出现得比RDP要早得多，所以Unix上支持VNC客户端出现地要早得多，由于RDP协议和VNC协议都是远程图形桌面协议，所以两个协议可以比较容易地相互转化，所以xrdp直接在VNCserver的基础上开发了RDP服务器。
+*** xrdp代理实现
+    由于xrdp需要支持不同协议的代理，加上RDP本本身是一个加密的协议，所以不能直接像TCP代理那样直接转发，大部分时间里，远程桌面协议还是处于获取用户的输入，改变桌面图像的过程中。所以RDP服务器可以看作一个由事件驱动的服务器，这里的事件或者是鼠标事件，或者是键盘事件。这里简单介绍一个交互过程：
+    #+BEGIN_SRC plantuml :file xrdp概述/rdp_com.png 
+      @startuml
+      client -> proxy :用户输入
+      proxy -> server :转发用户输入
+      server -> proxy :桌面更新数据包
+      proxy -> client :转发桌面更新数据包
+      @enduml
+    #+END_SRC
+
+    #+RESULTS:
+    [[file:xrdp概述/rdp_com.png]]
+    
+    这是作为一个代理服务器的操作时序。proxy和server沟通的过程涉及到协议的转化，所以proxy与server的沟通信息可以不同，相比之下，client和proxy的一直都是RDP协议，所以可以直接得到RDP协议的数据来处理，只要在修改协议栈的实现即可。
+*** TODO RDP协议转化的实现
+    xrdp本身可以代理不同的协议，包括VNC和X11，同时xrdp既要支持作为RDP服务器，也要支持作为RDP代理，所以其内部的实现抽象程度较高。这里只关注一下对于RDP协议转化的实现。
+**** C语言的基于对象
+     面向对象的三大特性，继承、封装和多态，而基于对象一般指的是只实现了封装和对象的概念。在服务器编程领域面向对象的特性并不是特别受欢迎，不少网络库都仅仅依靠基于对象的手法来组织代码。
+     
+     封装可以使用C语言已有的作用域规则模拟，可以考虑一下C++的面向对象的概念。结构体本身是C++类的前身，一个类需要有数据成员和函数成员，可以直接使用函数成员作为结构体的成员之一。接下来就是私有成员和共有成员的划分，C语言可以像Java那样使用一个文件编写一个类的方式，再加上static关键字模拟出私有函数成员的概念，然而结构体有一个问题是其字段都是公有的，这带来的结果是所有数据成员都共有的。当然我们也可以手动提供这种机制，比如像Python那样，所有的私有成员使用下划线开头。函数成员的第一个参数时self，这个也和Python使用的关键字一样，对于不使用self作为第一个参数的而又属于这个类的函数，可以认为是实现了友元或者类方法。
+**** 窗口管理对象
+     一个连接完全建立并且能给客户端返回桌面之后，窗口管理对象xrdp_wm会被建立。之后代理和客户端的交互都是通过调用RDP协议栈的接口和xrdp_wm的方法来处理。这里我们看一下，协议栈是如何处理RDP客户端发来的数据包的，这里只介绍协议栈的其中一个接口：libxrdp_process_data，从这个接口我们大致可以知道它是用来处理rdp报文的，它会解析报文的数据，调用响应的处理流程，这点我们知道，这个对象比较特别的一点是，它包含了处理这个反射的所有功能。
+
+     接下来先看一下一个特别的函数，也是这个函数提供了统一的处理方式，让xrdp可以使用统一的逻辑来处理客户的RDP输入数据：
+     #+BEGIN_SRC C
+       int
+       callback(intptr_t id, int msg, intptr_t param1, intptr_t param2,
+               	intptr_t param3, intptr_t param4)
+       {
+           int rv;
+           struct xrdp_wm *wm;
+           struct xrdp_rect rect;
+
+           if (id == 0) /* "id" should be "struct xrdp_process*" as long */
+           {
+               return 0;
+           }
+
+           wm = ((struct xrdp_process *)id)->wm;
+
+           if (wm == 0)
+           {
+               return 0;
+           }
+
+           rv = 0;
+
+           switch (msg)
+           {
+               case 0: /* RDP_INPUT_SYNCHRONIZE */
+                   rv = xrdp_wm_key_sync(wm, param3, param1);
+                   break;
+               case 4: /* RDP_INPUT_SCANCODE */
+                   rv = xrdp_wm_key(wm, param3, param1);
+                   break;
+               case 5: /* RDP_INPUT_UNICODE */
+                   rv = xrdp_wm_key_unicode(wm, param3, param1);
+                   break;
+               case 0x8001: /* RDP_INPUT_MOUSE */
+                   rv = xrdp_wm_process_input_mouse(wm, param3, param1, param2);
+                   break;
+               case 0x8002: /* RDP_INPUT_MOUSEX (INPUT_EVENT_MOUSEX) */
+                   rv = xrdp_wm_process_input_mousex(wm, param3, param1, param2);
+                   break;
+               case 0x4444: /* invalidate, this is not from RDP_DATA_PDU_INPUT */
+                   /* like the rest, it's from RDP_PDU_DATA with code 33 */
+                   /* it's the rdp client asking for a screen update */
+                   MAKERECT(rect, param1, param2, param3, param4);
+                   rv = xrdp_bitmap_invalidate(wm->screen, &rect);
+                   break;
+               case 0x5555: /* called from xrdp_channel.c, channel data has come in,
+                           pass it to module if there is one */
+                   rv = xrdp_wm_process_channel_data(wm, param1, param2, param3, param4);
+                   break;
+               case 0x5556:
+                   rv = xrdp_mm_check_chan(wm->mm);
+                   break;
+               case 0x5557:
+                   //g_writeln("callback: frame ack %d", param1);
+                   xrdp_mm_frame_ack(wm->mm, param1);
+                   break;
+           }
+           return rv;
+       }
+     #+END_SRC
+     可以看到这个函数会处理RDP的所有输入，会根据RDP数据包来调用相应的处理流程，这里还看不出什么，可以深入到xrdp_wm_key，会发现如下这个部分:
+     #+BEGIN_SRC C
+       xrdp_wm_key(struct xrdp_wm *self, int device_flags, int scan_code)
+       {
+           //...
+
+           if (self->mm->mod != 0)
+           {
+               if (self->mm->mod->mod_event != 0)
+               {
+                   ki = get_key_info_from_scan_code
+                       	(device_flags, scan_code, self->keys, self->caps_lock,
+                       	 self->num_lock, self->scroll_lock,
+                       	 &(self->keymap));
+
+                   if (ki != 0)
+                   {
+                       self->mm->mod->mod_event(self->mm->mod, msg, ki->chr, ki->sym,
+                                               	scan_code, device_flags); // 模块提供的
+                   }
+               }
+           }
+           else if (self->focused_window != 0)
+           {
+               xrdp_bitmap_def_proc(self->focused_window,
+                                    msg, scan_code, device_flags);
+           }
+           //...
+
+           return 0;
+       }
+     #+END_SRC
+     self->mm->mod->mod_event这个调用也是其他几个包处理函数最终会调用的函数。再需要深入就是模块系统了。
+**** 模块系统
+    这里先不讲连接初始化的过程，先说一下RDP连接建立后，对于每个RDP输入数据包，xrdp会响应的图像更新数据。作为代理这些数据会被各自的后台模块解析，之在模块的内部进行处理，各个模块的处理方式不同，如果是vnc后台，就会和给后台发送相应的数据，待后台处理完毕之后发响应通过前台发送回给客户端。
+    说白了实际产生响应的部分由各个模块来实现，这就是xrdp使用模块系统的原因，可以看一下模块系统的代码：
+    #+BEGIN_SRC C
+      struct xrdp_mod
+      {
+       	int size; /* size of this struct */
+       	int version; /* internal version */
+       	/* client functions */
+       	int (*mod_start)(struct xrdp_mod* v, int w, int h, int bpp);
+       	int (*mod_connect)(struct xrdp_mod* v);
+       	int (*mod_event)(struct xrdp_mod* v, int msg, long param1, long param2,
+                       	 long param3, long param4);
+       	int (*mod_signal)(struct xrdp_mod* v);
+       	int (*mod_end)(struct xrdp_mod* v);
+       	int (*mod_set_param)(struct xrdp_mod *v, const char *name, const char *value);
+       	int (*mod_session_change)(struct xrdp_mod* v, int, int);
+       	int (*mod_get_wait_objs)(struct xrdp_mod* v, tbus* read_objs, int* rcount,
+                               	 tbus* write_objs, int* wcount, int* timeout);
+       	int (*mod_check_wait_objs)(struct xrdp_mod* v);
+       	int (*mod_frame_ack)(struct xrdp_mod* v, int flags, int frame_id);
+       	tintptr mod_dumby[100 - 10]; /* align, 100 minus the number of mod
+                                       	functions above */
+       	/* server functions */
+       	int (*server_begin_update)(struct xrdp_mod* v);
+       	int (*server_end_update)(struct xrdp_mod* v);
+       	int (*server_fill_rect)(struct xrdp_mod* v, int x, int y, int cx, int cy);
+       	int (*server_screen_blt)(struct xrdp_mod* v, int x, int y, int cx, int cy,
+                               	 int srcx, int srcy);
+       	int (*server_paint_rect)(struct xrdp_mod* v, int x, int y, int cx, int cy,
+                               	 char* data, int width, int height,
+                               	 int srcx, int srcy);
+       	int (*server_set_pointer)(struct xrdp_mod* v, int x, int y,
+                                  char* data, char* mask);
+       	int (*server_palette)(struct xrdp_mod* v, int* palette);
+       	int (*server_msg)(struct xrdp_mod* v, char* msg, int code);
+       	int (*server_is_term)(struct xrdp_mod* v);
+       	int (*server_set_clip)(struct xrdp_mod* v, int x, int y, int cx, int cy);
+       	int (*server_reset_clip)(struct xrdp_mod* v);
+       	int (*server_set_fgcolor)(struct xrdp_mod* v, int fgcolor);
+       	int (*server_set_bgcolor)(struct xrdp_mod* v, int bgcolor);
+       	int (*server_set_opcode)(struct xrdp_mod* v, int opcode);
+       	int (*server_set_mixmode)(struct xrdp_mod* v, int mixmode);
+       	int (*server_set_brush)(struct xrdp_mod* v, int x_origin, int y_origin,
+                               	int style, char* pattern);
+       	int (*server_set_pen)(struct xrdp_mod* v, int style,
+                              int width);
+       	int (*server_draw_line)(struct xrdp_mod* v, int x1, int y1, int x2, int y2);
+       	int (*server_add_char)(struct xrdp_mod* v, int font, int character,
+                               int offset, int baseline,
+                               int width, int height, char* data);
+       	int (*server_draw_text)(struct xrdp_mod* v, int font,
+                               	int flags, int mixmode, int clip_left, int clip_top,
+                               	int clip_right, int clip_bottom,
+                               	int box_left, int box_top,
+                               	int box_right, int box_bottom,
+                               	int x, int y, char* data, int data_len);
+       	int (*server_reset)(struct xrdp_mod* v, int width, int height, int bpp);
+       	int (*server_query_channel)(struct xrdp_mod* v, int index,
+                                    char* channel_name,
+                                    int* channel_flags);
+       	int (*server_get_channel_id)(struct xrdp_mod* v, const char *name);
+       	int (*server_send_to_channel)(struct xrdp_mod* v, int channel_id,
+                                      char* data, int data_len,
+                                      int total_data_len, int flags);
+       	int (*server_bell_trigger)(struct xrdp_mod* v);
+       	/* off screen bitmaps */
+       	int (*server_create_os_surface)(struct xrdp_mod* v, int rdpindex,
+                                       	int width, int height);
+       	int (*server_switch_os_surface)(struct xrdp_mod* v, int rdpindex);
+       	int (*server_delete_os_surface)(struct xrdp_mod* v, int rdpindex);
+       	int (*server_paint_rect_os)(struct xrdp_mod* mod, int x, int y,
+                                    int cx, int cy,
+                                    int rdpindex, int srcx, int srcy);
+       	int (*server_set_hints)(struct xrdp_mod* mod, int hints, int mask);
+       	/* rail */
+       	int (*server_window_new_update)(struct xrdp_mod* mod, int window_id,
+                                       	struct rail_window_state_order* window_state,
+                                       	int flags);
+       	int (*server_window_delete)(struct xrdp_mod* mod, int window_id);
+       	int (*server_window_icon)(struct xrdp_mod* mod,
+                                  int window_id, int cache_entry, int cache_id,
+                                  struct rail_icon_info* icon_info,
+                                  int flags);
+       	int (*server_window_cached_icon)(struct xrdp_mod* mod,
+                                       	 int window_id, int cache_entry,
+                                       	 int cache_id, int flags);
+       	int (*server_notify_new_update)(struct xrdp_mod* mod,
+                                       	int window_id, int notify_id,
+                                       	struct rail_notify_state_order* notify_state,
+                                       	int flags);
+       	int (*server_notify_delete)(struct xrdp_mod* mod, int window_id,
+                                    int notify_id);
+       	int (*server_monitored_desktop)(struct xrdp_mod* mod,
+                                       	struct rail_monitored_desktop_order* mdo,
+                                       	int flags);
+       	int (*server_set_pointer_ex)(struct xrdp_mod* v, int x, int y, char* data,
+                                     char* mask, int bpp);
+       	int (*server_add_char_alpha)(struct xrdp_mod* mod, int font, int character,
+                                     int offset, int baseline,
+                                     int width, int height, char* data);
+
+       	int (*server_create_os_surface_bpp)(struct xrdp_mod* v, int rdpindex,
+                                            int width, int height, int bpp);
+       	int (*server_paint_rect_bpp)(struct xrdp_mod* v, int x, int y, int cx, int cy,
+                                     char* data, int width, int height,
+                                     int srcx, int srcy, int bpp);
+       	int (*server_composite)(struct xrdp_mod* v, int srcidx, int srcformat,
+                               	int srcwidth, int srcrepeat, int* srctransform,
+                               	int mskflags, int mskidx, int mskformat,
+                               	int mskwidth, int mskrepeat, int op,
+                               	int srcx, int srcy, int mskx, int msky,
+                               	int dstx, int dsty, int width, int height,
+                               	int dstformat);
+       	int (*server_paint_rects)(struct xrdp_mod* v,
+                                  int num_drects, short *drects,
+                                  int num_crects, short *crects,
+                                  char *data, int width, int height,
+                                  int flags, int frame_id);
+       	int (*server_session_info)(struct xrdp_mod* v, const char *data,
+                                   int data_bytes);
+       	tintptr server_dumby[100 - 44]; /* align, 100 minus the number of server
+                                           functions above */
+       	/* common */
+       	tintptr handle; /* pointer to self as int */
+       	tintptr wm; /* struct xrdp_wm* */
+       	tintptr painter;
+       	tintptr si;
+      };
+    #+END_SRC
+    以上是对于xrdp模块应该配置的接口列表，所有的模块都被编译成一个动态链接库，同时都会提供mod_init以及mod_exit这两个全局符号，在RDP连接初始化的过程中，就会有根据用户和输入和配置文件选择一个动态连接库，只后调用mod_init来建立和VNC服务器（或者rdp服务器）的连接。
+    这个同内核态编写模块相似，当然用户态实现起来要简单得多。(man 一下dlopen就有了)
+    近期大家都在学习Python，可能对于多态也有一定理解了，多态是一种效果，对于不同对象的调用同样的接口会产生不同的逻辑行为，说的就是这个。在C语言里一般使用函数指针来实现多态。当然这种多态实现和Python已经差了很多了，
+    动态类型的语言本来就不需要提供额外的间接层。我们可以先看一下这些接口。
+    如果阅读代码可以看到每个模块实现的接口都只是一部分，处理mod_init和mod_exit，需要特别实现以外。还有一个函数mod_event会接收客户端的输入事件，然后调用自身的逻辑来处理，这是每个模块都必须实现的。也是每个模块产生响应的接口。
+** xrdp、freerdp、rdesktop
+   rdesktop和freerdp这两个都是Linux下的RDP客户端。xrdp是基于freerdp和rdesktop开发的，rdesktop最早是通过逆向工程开发出来的，算是RDP客户端的鼻祖。而freerdp是rdesktop的一个分支，支持的RDP标准要高很多。
+   
+   
+   xrdp的源码本身使用了基于对象做法来编写程序，其风格接近Python。freerdp也使用了基于对象的风格。只有比较早的rdesktop没有使用这种风格，所以rdp协议栈是最容易抽取的，可以直接使用，可惜目前只支持低版本的RDP标准。
+   
+   freerdp和rdesktop作为客户端，需要解析绘图指令和图片缓存，将桌面显示在本机屏幕上或者窗口上。这个过程是之后开发 *回放功能* 的基础。
+** Guacamole、FreeRDP-WebConnect
+   FreeRDP的开发者又使用C++开发了FreeRDP-WebConnect服务器程序。由于使用的是C++，暂时不打算去看。
+* 借助远程桌面协议模拟ssh和telnet代理
+  一般在shell上运行一个程序，默认情况下，该程序会继承shell的文件描述符，标准输出指向终端的输出，标准输入指向终端的输入，所以终端是被当作文件来处理的。所以如果在web端实现一个功能强大的客户端的话，ssh或者telnet程序可以直接可以直接利用websocket来获得终端的输入，输出再利用websocket传回给web终端，这个是Gateone的实现技巧。这个方案需要实现一个浏览器的终端（一般使用JavaScript编写）。另一套方案就是借助远程桌面协议，至于原理很容易理解，我们可以在桌面开一个虚拟终端，并且全屏显示，这样就和终端没有什么区别了。所以既然实现了远程桌面终端其实也完全可以复用远程桌面的很多实现。我们当然不可能先开一个桌面再开一个终端来全屏显示，但这个做法的可行性暗示了我们这么一个事实：远程桌面协议完全有能力描述一个终端的所有功能。所以具体的做法就是实现一个将终端的显示转化为远程桌面协议的绘图数据，之后借助远程桌面协议的客户端来显示就可以了。这个方案其实要灵活得多，也不需要在浏览器上运行一个终端，但由此也引入了一定开销。终端操作的回放功能可以直接使用远程桌面的处理功能，如果要同时支持浏览器的远程桌面客户端，那么这个方案应该可以减少不少工作量。
+
+* TODO Guacamole 协议
+** 概述
+  本章是对Guacamole协议的概述，描述它的设计和一般用途。虽然这里会介绍一些指令和语法，但这不会是一份详尽可用指令清单。本文的目的仅仅是列出一般的类型和用法，如果你在寻找某个具体指令的语法和用途，请参考附录中的协议参考。
+*** TODO 设计
+    Guacamole协议由指令组成，每个指令都是一个以逗号分隔的列表，结尾跟一个终止用的分号。列表的第一个元素是指令的操作码，剩下的都是指令的参数：
+    
+    OPCODE, ARG1, ARG2, ARG3, ...;
+*** 事件
+    当客户端或者服务器有什么东西改变，如某个键被按下、鼠标被移动、剪切板数据改变时，会发送一个指令来说明事件的发生。
+
+** Guacamole
+** Guacamole参考
+*** 绘制
+**** arc（弧线）
+     
+* xrdp的网络编程模型
+  虽然xrdp的使用的网络编程模型无法处理高并发的情景，但是它组织程序的方式和一些针对RDP协议的优化都是我们需要知道的，加上这个部分大家会比较熟悉，所以这里把其中重要的东西提取出来，供大家学习。
+
+  无论式VNC、X11、还是RDP，其服务器的状态变化基本都可以用以事件作为输入的自动机来描述，这也是为什么基于事件[fn:5:一般指文件描述符事件]网络编程模型十分常用的原因。xrdp就选择了这种编程模型。绘制和处理的图形的计算主要由X server和X client完成[fn:6:Windows上没有X协议，这里只是说明RDP和VNC这类协议的职责所在而已。]，RDP和VNC使用的RFB协议只是负责传输图形和输入用户事件，所以RDP服务器处理的主要是IO密集型的任务。
+** IO模型
+   《Unix网络编程 卷一：套接字联网API》提到了五种IO模型：
+   1) 阻塞式I/O
+   2) 非阻塞I/O
+   3) I/O复用
+   4) 信号驱动式I/O
+   5) 异步I/O
+   
+   xrdp服务器采用比较流行的做法，即使用非阻塞I/O和I/O复用模型。可以看一下源码：
+   #+BEGIN_SRC C
+     int
+     trans_listen_address(struct trans *self, char *port, const char *address)
+     {
+         //...
+         g_tcp_set_non_blocking(self->sck);
+         //...
+     }
+   #+END_SRC
+   xrdp的listen socket会被设定为non_blocking。除此之外，对于xrdp中默认TCP连接的设置还包括如下内容：
+   - 关闭Nagle算法，提高是实时性。
+   - TCP_KEEPALIVE 定时探测连接是否断开，如果断开的时候没有断开的信息，连接也能被关闭。
+   - 会设置send_buffer_bytes和recv_buffer_bytes。
+** 基于事件的网络编程模型
+  基于事件的网络编程模型一般是建立一个事件循环，其逻辑大体如下，一般大家都比较熟悉，主要是一个事件循环：
+  
+  #+BEGIN_SRC plantuml :file xrdp概述/eventloop.png :exports results
+    start
+    :初始化一系列文件描述符;
+    
+    repeat
+     :监听一系列文件描述符的事件;
+     :根据根据事件类型,
+      dispatch相应的处理流程;
+    repeat while ()
+
+    end
+  #+END_SRC
+  
+
+  #+RESULTS:
+  [[file:xrdp概述/eventloop.png]]
+
+  xrdp中最重要的两个“事件循环”包括：
+  1) 监听线程的事件循环
+  2) RDP会话线程的事件循环
+  
+  这里需要了解一些惯例，之前说过RDP使用的是TCP作为传输层协议，而TCP网络编程一般至少处理三个事件[fn:3:或者说三个半事件，还有半个是消息发送完毕，这个还高流量的服务中可能需要处理，具体看《Linux多线程服务端编程》]：
+  1) 连接建立。
+  2) 连接断开。
+  3) 消息到达，文件描述符可读。
+   
+  对于监听线程来说它主要处理连接建立的这个TCP事件，这其中还需要注意一下信号的处理。由于在多线程服务器编程中一般不会推荐信号，因为它是异步产生的，处理起来要复杂得多。同时，而且和基于事件网络编程模型很不搭，所以对于需要使用信号的场合。一般会通过两种方法将信号转化为文件描述符事件：
+  1) 传统的方法，用signal handler 往一个特定的pipe写入一个字节，主程序监听这个pipe的事件，从而纳入统一的IO事件处理框架中。
+  2) 现代点的方法，使用signalfd把信号直接转化为文件描述符事件。
+  
+  xrdp使用了第一种方法:
+  #+BEGIN_SRC C
+    int
+    xrdp_listen_main_loop(struct xrdp_listen *self) {
+        //初始化...
+        while (cont)
+        {
+              /* build the wait obj list */
+              robjs_count = 0;
+              robjs[robjs_count++] = term_obj;
+              robjs[robjs_count++] = sync_obj;
+              robjs[robjs_count++] = done_obj;
+              timeout = -1;
+
+              /* if (self->listen_trans != 0) */
+              {
+                  if (trans_get_wait_objs(self->listen_trans, robjs,
+                                          &robjs_count) != 0)
+                  {
+                      log_message(LOG_LEVEL_ERROR,"Listening socket is in wrong state, "
+                                "terminating listener");
+                      break;
+                  }
+              } // 这里设置了所有的文件描述符，加起来一般有5个
+
+              /* wait - timeout -1 means wait indefinitely*/
+
+              if (g_obj_wait(robjs, robjs_count, 0, 0, timeout) != 0)
+              {
+                  /* error, should not get here */
+                  g_sleep(100);
+              }
+
+              // dispatch相应的处理流程
+              if (g_is_wait_obj_set(term_obj)) /* termination called */
+              {
+                  break;
+              }
+
+              /* some function must be processed by this thread */
+              if (g_is_wait_obj_set(sync_obj))
+              {
+                  g_reset_wait_obj(sync_obj);
+                  g_process_waiting_function(); /* run the function */
+              }
+
+              if (g_is_wait_obj_set(done_obj)) /* pro_done_event */
+              {
+                  g_reset_wait_obj(done_obj);
+                  /* a process has died remove it from lists*/
+                  xrdp_listen_delete_done_pro(self); // 一个process即可以是读也可以时写
+              }
+
+              /* Run the callback when accept() returns a new socket*/
+              if (trans_check_wait_objs(self->listen_trans) != 0)
+              {
+                  break;
+              }
+        }
+        //...
+    }
+  #+END_SRC
+  我们可以看到xrdp的监听线程主要由四个事件来驱动：
+  1) SIGINT和SIGTERM信号产生。
+  2) 同步事件发生。
+  3) 一个处理线程结束。
+  4) 连接可建立。
+  xrdp使用了select来监听事件以及确认事件是否发生的。之所以使用select而不用更好用的poll甚至epoll，个人猜测是因为xrdp其实也需要兼容Windows，而Windows上只支持了select。这点其实制约了xrdp的实现。
+  
+  一旦连接建立之后，监听线程就会开辟一个新的线程来处理RDP会话，新的这个线程会accept这个连接的TCP文件描述符，之后监听线程就会等待下一个是事件的到来，所以xrdp采用的是每个连接一个线程的网络编程模型。显然这不是能够处理高并发的模型。
+  带来的整个处理流程。以下是概念图：
+  
+  #+BEGIN_SRC dot :file xrdp概述/vncproxy.png :cmdline -Kdot -Tpng :exports results
+    digraph vncproxy {
+            rankdir = LR
+            node [shape = record]
+           
+            a [label = "RDPclient"]
+            proxy [label = "{<p1> proxy| {<p2> libvnc | <p3> libx11 | <p4> librdp }}"]
+            c [label = "VNCserver"]
+
+            a -> proxy:p1 [label = "RDP packet"]
+            proxy -> a [label = "RDP packet"]
+            proxy:p2 -> c [label = "VNC packet"]
+            c -> proxy:p2 [label = "VNC packet"]
+    }
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:xrdp概述/vncproxy.png]]
+  
+  之前说过
+  堡垒机中远程桌面协议代理这块的要点是协议的代理，
+  RFB协议（VNC使用的协议）和VNC协议的RDP化，可以看到
+** RFB协议要点
+   
+** VNC模块
+** 基本流程
+* 协议的处理方式
+** xrdp_process_data_in
+   这个也是事件
+* 进展
+  - 到目前为止，基本摸清了xrdp代理的结构，以及各个协议的地位，相关实现代码的基本结构。
+  - 接下来会主要把精力放到如何保存rdp协议数据和回放的功能实现上。
+  - 再之后就是处理会话数据的检索功能。
+  - 后面才是对RDP协议的细致分析和处理。
+* TODO 问题
+  - Once loaded是值什么？
+  - JavaScript不能处理二进制数据
+* FAQ
+  - 在没有websocket的时候如何完成代理的功能？
+    HTTP tennel
+* 参考
+  - [[http://www.xrdp.org/][xrdp官网]]
+  - https://github.com/rdesktop/rdesktop
+  - [[https://en.wikipedia.org/wiki/Remote_Desktop_Protocol][Wikipedia：Remote Desktop Protocol]]
+  - RDP协议的代理与转发的研究和实现
+  - [[http://qimo601.iteye.com/blog/614649][RDP协议详细解析]]
+  - [[https://zh.wikipedia.org/zh-hans/%E4%BD%8D%E5%9B%BE][维基百科:位图]]
+  - [[http://cn.linux.vbird.org/linux_basic/0590xwindow.php][鸟哥的Linux私房菜：X Window配置介绍]]
+  - 宗波. 浅析堡垒机概念及工作原理[J]. 及计算机光盘软件与应用，2012,18：070
+  - 基于代理的远程访问审计系统的设计于实现
+  - RDP协议的代理与转发的研究与实现 乔俊峰
+  - 基于代理的远程访问审计系统的设计与实现 李灏  
+  - 浅析运维堡垒机的设计和应用前景
+  - [[https://github.com/neutrinolabs/xrdp]]
+  - [[https://github.com/neutrinolabs/NeutrinoRDP]]
+  - [[https://github.com/silenceli/rdpproxy]]
+  - [[http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf][C11标准的最终定稿的草案]]
+  - [[https://wiki.wireshark.org/RDP][RDP - The Wireshark Wiki]]
+  - [[http://yosefk.com/blog/oo-c-is-passable.html][oo-c-is-passable]]
+  - [[https://baike.baidu.com/item/VNC/2906305?fr=aladdin][百度百科:VNC]]
+  - The RFB Protocol    

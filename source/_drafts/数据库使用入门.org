@@ -1,0 +1,26 @@
+#+TITLE: 数据库使用入门
+#+DATE: 2017-07-11
+#+LAYOUT: post
+#+TAGS: DB
+#+CATEGORIES: DB
+
+* MongoDB
+** 使用简介
+   MongogDB的使用是按照client-server模式的，一个MongoDB可以创建多个数据库，client对象可以访问服务器的任何数据库。通过client我们可以创建多个数据库。数据库的基本元素是文件，文件由集合来组织。一个文件至少属于一个集合。集合可以想象成关系式数据库的一个表。
+   MongoDB是一个无模式的数据库，在内部Mongo使用一种类似BSON的类似JSON的二进制形成存储文档，而python中内置类类似的数据结构，也就是字典，所以两者之间的转换是非常常见的，我们使用Python的过程中基本上默认会使用字典。
+** pymongo使用
+   MongoDB的Python接口，使用的时候要先建立到数据库的连接。
+   数据在MongoDB中使用JSON格式保存
+   文件可以保存Python的原生类型，文件可以在原生类型和BSON之间转换
+** 查询
+** 序列化（Serialization）
+   将对象的状态信息转换成可以存储或传输的形式的过程。主要是转换成可以直接传输的线性字节流
+** MongoDB文档和JSON
+   
+* 语言层面使用数据库
+  缓存中的数据、用类型组织的数据、实际的数据、层次比预想得还要多
+* 思路
+  - 以文档形式来表示数据，所以就要看文档语言的能力了。比较强大的是树
+  - 数据库的关键还是持久化
+* 参考
+  - [[https://wiki.archlinux.org/index.php/PostgreSQL_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)][Archlinux PostgreSQL]]

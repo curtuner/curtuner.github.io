@@ -1,0 +1,14 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{static} \PYG{k}{struct} \PYG{n}{xrdp\PYGZus{}listen} \PYG{o}{*}\PYG{n}{g\PYGZus{}listen} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{;}
+\PYG{k+kt}{int}
+\PYG{n+nf}{main}\PYG{p}{(}\PYG{k+kt}{int} \PYG{n}{argc}\PYG{p}{,} \PYG{k+kt}{char} \PYG{o}{**}\PYG{n}{argv}\PYG{p}{)}
+\PYG{p}{\PYGZob{}}
+    \PYG{c+c1}{// 初始化、读取配置等...}
+    \PYG{n}{g\PYGZus{}listen} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}listen\PYGZus{}create}\PYG{p}{();}
+    \PYG{c+c1}{// ...}
+    \PYG{n}{exit\PYGZus{}status} \PYG{o}{=} \PYG{n}{xrdp\PYGZus{}listen\PYGZus{}main\PYGZus{}loop}\PYG{p}{(}\PYG{n}{g\PYGZus{}listen}\PYG{p}{);}
+    \PYG{c+c1}{// 结束、清理...}
+
+    \PYG{k}{return} \PYG{l+m+mi}{0}\PYG{p}{;}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}
