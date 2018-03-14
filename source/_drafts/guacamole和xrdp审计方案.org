@@ -236,6 +236,12 @@ yy   就协议来说，RDP协议并没有共享会话的内容，所以是否能
    #+END_SRC
    可以有，一开始建立的是和客户端的sessionn，需要注意的是client_info，所以对象的问题。协议栈的交互是通过session来维护的。
    
+* cairo
+** 模型
+*** Destination
+    Destination是绘图的平面，可能是pixel数组，也可能是SVG或者PDF文件
+*** Source
+    
 * TODO 中间层
   lib_framebuffer_update
   server_paint_rect(struct xrdp_mod* mod, int x, int y, int cx, int cy,
@@ -263,3 +269,4 @@ yy   就协议来说，RDP协议并没有共享会话的内容，所以是否能
    有一个用户态的缓存，这个显然是因为到了rdp的应用层。
 ** target_surface
    surface应该类似于Guacamole的display
+** 
