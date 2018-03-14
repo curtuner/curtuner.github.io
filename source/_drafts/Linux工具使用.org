@@ -63,6 +63,21 @@
    #+BEGIN_SRC sh
    rdesktop <host_ip>
    #+END_SRC
+* autotools
+  实际上这些现在都没有cmake好用。
+  主要就是两个部分：
+  1) 按照顺序调用各个工具
+  2) 修改或者添加3个文件
+     
+  一个比较大的不同是automake没有提供把文件编译成.o文件的选项，
+** autoconf
+   这个可执行文件会使用m4来解析configure.ac（或者早期的configure.in）文件，进而生成脚本configure，之后就是典型的运行./configure -> make -> make install这三步曲了。运行了./configure之后就会生成Makefile之后就可以运行代码了。所以说automake其实不会生成Makefile。需要注意的是autoconfig会自动生成config.h文件，Makefile.in这个文件最终会变成Makefile，所以ac文件的影响没那么大。
+** aclocal
+   生成aclocal文件和缓存文件夹autom4te.cache收集autolocal中的各种非autoconf中的宏，包括自定义宏。autoconf目的是生成
+** autoheader
+   生成config.h.in的宏定义文件，
+   可以看到运行了autoconf之后程序里面会有程序，
+
 * 加密工具
 ** md5sum
 * gnome
