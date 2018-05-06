@@ -15,7 +15,9 @@
   #+BEGIN_SRC sh
   journalctl -e
   #+END_SRC
-  可以查看最近的syslog
+  可以查看最近的
+* linux 
+  
 * 套接字查询
   在Archlinux下netstat已经默认不安装了，其替代品叫ss。
   
@@ -58,6 +60,7 @@
     #+BEGIN_SRC sh
     namp -sV -O <host>
     #+END_SRC
+
 * 用于和Windows交互
 ** rdesktop
    #+BEGIN_SRC sh
@@ -72,14 +75,23 @@
   一个比较大的不同是automake没有提供把文件编译成.o文件的选项，
 ** autoconf
    这个可执行文件会使用m4来解析configure.ac（或者早期的configure.in）文件，进而生成脚本configure，之后就是典型的运行./configure -> make -> make install这三步曲了。运行了./configure之后就会生成Makefile之后就可以运行代码了。所以说automake其实不会生成Makefile。需要注意的是autoconfig会自动生成config.h文件，Makefile.in这个文件最终会变成Makefile，所以ac文件的影响没那么大。
+*** 重要的指令
+**** AC_CHECK_LIB (library, function, [action-if-found], [action-if-not-found], [other-libraries])
+     有五个参数，第一个就是库的名字，第二个只要添上某个函数就可以了，一般这个函数存在，这个库就存在，最后一个一般不用。
 ** aclocal
    生成aclocal文件和缓存文件夹autom4te.cache收集autolocal中的各种非autoconf中的宏，包括自定义宏。autoconf目的是生成
 ** autoheader
    生成config.h.in的宏定义文件，
    可以看到运行了autoconf之后程序里面会有程序，
-
 ** autoreconf
    这是最常用的一个命令，可以自动根据顺序调用前面几个命令，生成configure脚本。需要注意的是autoreconf其实只有一开始生成configure文件的时候，之后修改了Makefile.am或者configure.ac，这些修改会在运行make命令的时候生效。
+** automake
+   有趣的是其中的指令会在configure.ac中编写，automake会读取configure.ac和Makefile.am文件生成Makefile.in。
+** .la文件和.lo文件
+   .lo是使用libtool编译出来的目标文件，相比.o文件添加了其他信息。
+* libtool
+  libtool其实常用于automake和autoconf，
+
 * 加密工具
 ** md5sum
 * gnome

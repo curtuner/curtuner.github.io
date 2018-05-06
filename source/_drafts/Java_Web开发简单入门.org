@@ -1,0 +1,36 @@
+#+TITLE: Java_Web开发简单入门
+#+DATE: 2018-04-17
+#+LAYOUT: post
+#+TAGS: Java
+#+CATEGORIES: Java
+
+* 前言
+  虽然一直以来对于Java没什么好感，但是最近还是需要去接触这个领域了，本着应付的心态稍微了解一下，把活干完再说。
+* REST和JAX-RS
+** 注解
+*** @Path注解
+    一个指定了@Path注解但未指定HttpMethod注解的方法，该方法可以返回另一个资源类对象，让这个对象接着分发和处理请求子资源的请求。子资源类并不需要作为服务对外暴露，所以类上可以不用加@Path注解。
+** 
+* Servlet
+  Servlet是在Java中是一套接口，通过继承这个类来完成Servlet的编写。很典型的面向对象用法，Java服务器可以通过调用Servlet对象的方法来完成各种服务。Servlet网关接口的原理类似。都是Web服务器和Web应用通信的标准，基本目标都是扩展HTTP协议。这种语言级别的通信标准一般使用Java实现的Web服务器来实现。Servlet是一套通信标准。
+  Servlet容器是指的是能使用Web服务器的，一般是使用Java实现的，常用的包括Tomcat，Jetty之类的。
+** 生命周期
+   Java的一个优点是对于模块化的概念能表述得比较清除，当然只提供一套选择，很多时候并不是特别优雅。我们通过继承来实现Servlet，所以所有的Servlet都遵守一套标准。生命周期也是相同的：
+   1) 服务器收到对该servlet的请求；
+   2) 加载Servlet类到内存中；
+   3) 实例化并调用init()方法初始化该Servlet
+   4) 调用service()
+   5) Servlet 通过调用 destroy() 方法终止（结束）
+   
+   init方法只被调用一次，所以service可以被调用多次，所以service大概需要处理竞争问题。一般来说，用户第一次调用该Servlet的方法时serlet会第一次被加载。每个用户请求会产生一个线程。init主要是创建或者加载一些用于整个生命周期的数据或者对象。
+   当服务器收到一个servlet请求时，会产生一个线程（或者从线程池取出一个），调用service函数，这个service会根据HTTP请求类型来调用相应的方法（doGet、doPost）。
+   destroy和init对应，只会被调用一次，完成各种资源的回收。
+* web.xml配置
+  由于是xml，所以只需要了解使用的tag而已：
+  - listener：对事件监听程序的支持，会话建立、修改和删除
+* 和WSGI的对比
+  Servlet和WSGI是在不同的层次的协议，Servlet管得更多，如何编写响应方法在已经在协议中写死了，而WSGI只是定义了一个简单的函数级别的调用规范，之后的请求处理方式交给Web框架来处理，所以Python才会出现大量的Web框架，而Java似乎没什么Web框架产生。当然性能也受限于此。
+
+
+* 参考
+  - [[https://www.cnblogs.com/pixy/p/4838268.html][RESTful和JAX-RS]]

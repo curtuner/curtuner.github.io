@@ -26,7 +26,7 @@
 ** Guacamole协议
    Guacamole协议是基于文本的远程桌面协议，之所以基于文本是为了方便JavaScript处理，同时它可以描述远程桌面的所有功能，是所有远程桌面协议的超集。也就是说远程桌面协议都可以翻译成Guacamole协议，Goacamole使用的协议格式。开发者只需要编写一个协议翻译器，作为文本协议，Guacamole协议数据可以很方便地处理和分析。同时也很方便扩展。比如哪天心情不好可以把文件协议弄进来什么的（目前其实已经这么做了）。
 ** 小结
-   其实RDP和VNC是两个平台最常用的协议，除此之外还有大大小小很多其他的协议，但本质上只要是远程桌面协议，它们的能力就不会差太多。Guacamole协议就是利用了这一点设计的，所以之后如果要讲远程桌面协议这类图形的协议的话，会主要以Guacamole协议为例子（原因当然是不用了解二进制协议的各种细节）。另外，Guacamole和X协议依旧是不同级别的协议。
+   其实RDP和VNC是两个平台最常用的协议，除此之外还有大大小小很多其他的协议，但本质上只要是远程桌面协议，它们的能力就不会差太多。Guacamole协议就是利用了这一点设计的，所以之后如果要讲远程桌面协议这类图形的协议的话，会主要以Guacamole协议为例子（原因当然是不用了解二进制协议的各种细节）。另外，Guacamole和X协议依旧是不同级别的
 * 远程桌面协议的代理
 ** 远程远程桌面协议的代理方案
    堡垒机预研首要解决的是协议代理的可行性。开源世界完成度比较高直接代理软件是xrdp，它的代理模式是如下结构的：
@@ -619,6 +619,43 @@
 * 协议的处理方式
 ** xrdp_process_data_in
    这个也是事件
+* 协议细节
+  RDP在传输画面上，以命令为操作方式，分成primary order和secondary order。RDP的对于远程桌面的优化主要体现在primary order, 在远程桌面协议交互的过程中，可以说主要还是bitmap的流量。一般来说传输bitmap的方式有两种：
+  1) RDP 服务器通过secondary order的bitmap cache将bitmap传输到RDP客户端暂存，之后发送一个memory blt将bitmap cache中的显示都屏幕上，已满bitmap的显示都是这种方法。
+  2) RDP直接传输bitmap数据并带上坐标，RDP客户端收到后直接显示，这个一般只是用于传输很少量的bitmap数据。
+
+  目前看来RDP有32个orders，一般服务器只支持少数的order
+** ROP
+   ROP全称Raster Operation，中文称为光栅化操作，定义了如何GDI（Graphics device interface ）。
+*** ROP参数
+   ROP全称Raster Operation，中文称为光栅化操作。主要对于位图进行处理，ROP主要有三种类型：
+   1) ROP2：将pen或者brush同目标位图进行结合
+   2) ROP3：将brush、源位图和目标位图进行结合
+   3) ROP4：使用mask，结合前景ROP3和背景ROP3
+
+    0xcc: 单纯copy道目的bitmap
+** Blt指令
+   Blt全称Block transfer将某个内存中的内容复制到另一块内存，指的是将数据赋值道屏幕的内存中。
+*** Destination Blt
+    对指定区域的目标位图进行ROP操作
+*** Pattern Blt
+    以ROP为参数对于目标位图和brush的raster operation。其区块大小受到指定边界的限制。鼠标的移动就是依靠这个命令。
+*** TODO Screen Blt
+    对于源方块和目标方块的ROP操作，这个指令一般用于移动窗口。移动窗口的时候移动前和移动后可能存在覆盖的情况，用这个指令可以减少
+*** Memory Blt
+    在发送这条指令之前至少会发送一个bitmap cache order给客户端。Memory Blt指令会根据bitmapCacheID、bitmapCacheIndex和corlorTableCacheIndex来得到bitmap和colorTable的信息。之后就是根据对bitmap和目标区域做ROP了。
+    对于xrdp的bitmap cache， 最多提供了4 × 4096个cache。这条指令有时会导致它从cache里面取出。
+** 字体
+   字体不是block和图片是独立处理的，相比图片，字体有两种定位方式，一种是基于基线，一种是像图片那样基于左上角的位置。一般使用基线的方法会更好。当然对于RDP这个是可选的。由于字体下面是图片，有很多处理图片时没有的工作：
+   - 字体会 *绘制在前景* ，如果使用背景混合模式是不透明的，那么字单元格的背景就会在桌面上显示出来，这个偶尔也会见到。
+   - 如果指令的textflags参数的Baseline Start位元设定了，那么startX和startY就是字元格。
+   - rdp传输的字体其实是1bpp的单色点阵字体。
+   - 说起来写字板和剪切板都叫clipboard
+   - 字体的颜色由前景来完成
+** 例子
+   了解了各种命令之后，就可以把一副图的。分析交互流程的时候主要关注的是bitmap cache，memory order，fontcache和text order。
+* xrdp实现的有趣点
+  最有趣的是xrdp的target_surface常年是黑色的，只是在做rop的时候起作用而已，本身不会更新。
 * 进展
   - 到目前为止，基本摸清了xrdp代理的结构，以及各个协议的地位，相关实现代码的基本结构。
   - 接下来会主要把精力放到如何保存rdp协议数据和回放的功能实现上。
@@ -630,6 +667,8 @@
 * FAQ
   - 在没有websocket的时候如何完成代理的功能？
     HTTP tennel
+  - ITUT-T是什么？
+    ITU-T的中文名称是国际电信联盟电信标准分局(ITU-T for ITU Telecommunication Standardization Sector), 它是国际电信联盟管理下的专门制定电信标准的分支机构。
 * 参考
   - [[http://www.xrdp.org/][xrdp官网]]
   - https://github.com/rdesktop/rdesktop
