@@ -67,6 +67,8 @@
    2) 其实关键还是建立TCP或者建立SSL连接。
 * guacamole-common-js
   这个模块实现了
+* guacamole-client分析
+  这是一个
 * 审计相关
 ** 历史文件
    历史文件是字符文件，包含内部主要包含guacamole关键字，关键字参数，以及base64编码的数据，这里我截取文件开头的一个片段：

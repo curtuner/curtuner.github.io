@@ -1,0 +1,26 @@
+#+TITLE: Java简单入门
+#+DATE: 2018-05-02
+#+LAYOUT: post
+#+TAGS: Java
+#+CATEGORIES: Java
+
+* Restful风格
+  javax.ws.rs 是 jax-rs 规范中定义的包名。
+  jax-rs全名Java API for RESTful Services。其中定义了：
+  - 一组启动方式
+  - 一组注解：@GET, @POST, @DELETE，@PUT，@consume...
+  Spring MVC是以Servlet为http容器，为自己构建一套API没有使用jax-rs标准。目前符合jax-rs表寻的有很多。Spring MVC的REST服务则不可移植。
+** 设计原则
+   - 系统中每一个对象或是资源都可以通过一个唯一的URI来寻址，URI的结构应该简单。
+   - 严格遵守HTTP协议的方法定义：
+     1) 如果要创建资源，则使用POST
+     2) 如果要检索资源，使用GET
+     3) 如果要更改资源状态或者对其进行更新，使用PUT方法
+     4) 如果要删除某个资源，应该使用DELETE方法
+** 简单使用
+   JAX-RS定义的API位于javax.ws.rs，而具体的实现则由第三方提供。首先需要理解的一个概念是，服务器和客户端之间交流的数据很多时候是定义好的，其实现以来于这种数据格式。JAX-RS依赖域MessageBodyReader和MessageBodywriter的实现来自动完成返回值到响应体的序列化以及请求体到实体的反序列化工作。
+* 参考
+  - [[https://segmentfault.com/q/1010000002484009][关于jax-rs的简单讲解]]
+  - [[https://www.ibm.com/developerworks/cn/java/j-lo-jaxrs/][使用 JAX-RS 简化 REST 应用开发]]
+  - [[https://waylau.gitbooks.io/rest-in-action/docs/Getting%20Started.html][REST实战]]
+    

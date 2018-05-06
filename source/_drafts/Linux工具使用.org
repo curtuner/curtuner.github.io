@@ -78,6 +78,8 @@
    生成config.h.in的宏定义文件，
    可以看到运行了autoconf之后程序里面会有程序，
 
+** autoreconf
+   这是最常用的一个命令，可以自动根据顺序调用前面几个命令，生成configure脚本。需要注意的是autoreconf其实只有一开始生成configure文件的时候，之后修改了Makefile.am或者configure.ac，这些修改会在运行make命令的时候生效。
 * 加密工具
 ** md5sum
 * gnome

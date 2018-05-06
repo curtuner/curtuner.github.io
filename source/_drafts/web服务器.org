@@ -5,4 +5,96 @@
 #+CATEGORIES: Web
 
 * 实现
+* Gunicorn
+** 源码流程分析
+   作为服务器基本的流程都大同小异：
+   1) 读取配置信息
+   2) 启动类型系统的初始化是非常复杂的
+    
+   这里可以从头来阅读代码，程序的入口点是app/wsgiapp.py的run函数：
+   #+BEGIN_SRC python
+     def run():
+         """\
+         The ``gunicorn`` command line runner for launching Gunicorn with
+         generic WSGI applications.
+         """
+         from gunicorn.app.wsgiapp import WSGIApplication
+         WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]").run()
+
+   #+END_SRC
+   可以看到它实例化了一个WSGIApplication对象，并执行run方法。所以要查看WSGIApplication的__init__方法，可以发现最终调用的是BaseApplication类的__init__：
+   #+BEGIN_SRC python
+     class BaseApplication(object):
+         """
+         An application interface for configuring and loading
+         the various necessities for any given web framework.
+         """
+         def __init__(self, usage=None, prog=None):
+             self.usage = usage
+             self.cfg = None
+             self.callable = None
+             self.prog = prog
+             self.logger = None
+             self.do_load_config()
+
+         def do_load_config(self):
+             """
+             Loads the configuration
+             """
+             try:
+                 self.load_default_config()
+                 self.load_config()
+             except Exception as e:
+                 print("\nError: %s" % str(e), file=sys.stderr)
+                 sys.stderr.flush()
+                 sys.exit(1)
+
+         def load_default_config(self):
+             # init configuration
+             self.cfg = Config(self.usage, prog=self.prog)
+
+   #+END_SRC
+   
+   可以看到首先是load_default_config之后是load_config，load_config是由继承的类来设定的。加载配置就是构造了一个Config对象，这里继续看下去：
+   #+BEGIN_SRC python
+     KNOWN_SETTINGS = []
+
+     def make_settings(ignore=None):
+         settings = {}
+         ignore = ignore or ()
+         for s in KNOWN_SETTINGS:
+             setting = s()
+             if setting.name in ignore:
+                 continue
+             settings[setting.name] = setting.copy()
+         return settings
+
+
+     class Config(object):
+
+         def __init__(self, usage=None, prog=None):
+             self.settings = make_settings()
+             self.usage = usage
+             self.prog = prog or os.path.basename(sys.argv[0])
+             self.env_orig = os.environ.copy()
+
+
+   #+END_SRC
+   实例化的时候会需要KNOWN_SETTINGS变量，gunicorn会在每个Config对象被创建的时候设置，创建的时候被加入到KNOWN_SETTINGS中。
+   接下来回到BaseApplication的run方法中：
+   #+BEGIN_SRC python
+     class BaseApplication:
+      def run(self):
+       try:
+        Arbiter(self).run()
+       except RuntimeError as e:
+        print("\nError: %s\n" % e, file=sys.stderr)
+        sys.stderr.flush()
+        sys.exit(1)
+   #+END_SRC
+   可以看到它实例化了一个Arbiter对象，之后执行其run方法。
+** http
+*** 要点
+    - HTTP header不区分大小写，method则区分大小写
+*** 解析的主体流程
   
