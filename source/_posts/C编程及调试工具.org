@@ -13,9 +13,11 @@
      coredumpctl list
    #+END_SRC
    如果要找到特定的dumnp，可以使用在后面加上PID、可执行文件名、可执行文件路径。
+* 使用Python调试系统调用接口
+  这个方案有两种，ctypes和cffi。
 * 入口函数
   入口函数是不会返回的，因为它本身会调用进程推出函数。按我的想法，入口函数其实不算一个函数，初始阶段并没有达成抽象的基础。把它当作一段命名的指令序列即可。它做的事情是初始化程序环境、调用main函数，main返回后清理运行资源。
   所以CRT（C运行时库）要做的事情有两样，为运行提供抽象，提供抽象需要计算机资源，所以当程序不需要运行的时候，要释放这些资源。
-* 参考文献
+* 参考
   - http://www.cnblogs.com/hazir/p/linxu_core_dump.html
   - https://wiki.archlinux.org/index.php/Core_dump

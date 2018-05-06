@@ -102,7 +102,7 @@ yy   就协议来说，RDP协议并没有共享会话的内容，所以是否能
    #+END_SRC
 * 开销
   Guacamole本身是内存消耗大户，对于CPU的压力其实还好，线程还是阻塞的时间比较多，压力比较大的是图片压缩的过程，这个对于xrdp也是同样，这个连接相对独立的应用，一般使用多线程比较不稳定。所以最终大概还是会使用进程模型。进程模型
-* freerdp绘图层接口
+* freerdp绘图层口
 ** xrdp
    这里的显示中间是xrdp_bitmap，最终的显示都是bitmap，其他的图像都在这之上显示。这个bitmap对象了可以表示很多图形对象，总共有九种：
    - bitmap
@@ -236,12 +236,75 @@ yy   就协议来说，RDP协议并没有共享会话的内容，所以是否能
    #+END_SRC
    可以有，一开始建立的是和客户端的sessionn，需要注意的是client_info，所以对象的问题。协议栈的交互是通过session来维护的。
    
+* xrdp支持的图形指令
+* Guacamole前端设计
+  
+* 文字处理
+** 基本概念
+   字体（font），是包含有一套字形与字符的数据文件。字符本质上是数字，要显示需要借助字体文件来完成。
+** 绘制glyph的流程
+** 文字识别
+   目前文字模糊识别技术基本都是基于机器学习算法，如果不是为了适应各种场景，就可以有针对性地选择合适的训练样本。
+** 
+* 握手过程
+  1) select, <protocol>;
+  2) 
+  这里的握手过程相比其他图形协议的要简单很多。
+* libxrdp
+  
+* Freerdp的使用
+  freerdp_connect接口调用之前要设置完成
+  
+* rdp绘图相关接口
+  作为rdp代理的时候有很多做法，但基础的只有几个接口：
+  - server_fill_rect
+  - server_screen_blt
+  - server_paint_rect
+  - server_set_pointer_ex
+  - server_set_clip
+  - server_reset_clip
+  - server_set_fgcolor
+  - server_set_bgcolor
+  - server_set_opcode
+  - server_set_mixmode
+  - server_set_brush
+  - server_set_pen
+  - server_draw_line
+  - server_add_char
+  - server_draw_text
+  - server_query_channel
+  - server_send_to_channel
+  - server_window_cached_icon
+  - server_notify_new_update
+  - server_notify_delete
+  - server_monitored_desktop
+  - server_session_info
+* vnc绘图相关接口
 * cairo
+** 测试用代码
+   这里直接使用最简单的样例
 ** 模型
 *** Destination
     Destination是绘图的平面，可能是pixel数组，也可能是SVG或者PDF文件
 *** Source
-    
+    这个相当于各种绘图工具，我们根据需要选择和设定绘图工具的参数。可以把source看作任意图层。
+*** Mask
+    这个是必要的，类似PS由多个图层组合而成，所以需要一个mask来完成。
+*** path
+    path只是一个虚拟的概念，如果直线，圆形之类的概念，但我们无法画出来，因为没有实体。要绘制出来要设置。
+    每次使用了绘图操作来实体化path后，path变成不再生效的状态。
+*** 基本的绘图操作
+**** cairo_stroke
+     这个操作会使用虚拟的画笔沿着path来绘制，之后通过mask印到画板上。画笔的属性包括宽度，样式和line cap
+**** cairo_fill
+     这个是为了填充path包围起来的地方，至于复杂的path，也有相应的规则
+**** cairo_show_text
+**** cairo_paint
+     相当于把source中的内容直接印到画板上，而没有mask，除了这个函数还有cairo_paint_with_alpha，可以指定透过的颜色比例。
+**** cairo_mask
+     
+* cairo和painter库的对应
+  painter就算是cairo_t的对应
 * TODO 中间层
   lib_framebuffer_update
   server_paint_rect(struct xrdp_mod* mod, int x, int y, int cx, int cy,
@@ -270,3 +333,7 @@ yy   就协议来说，RDP协议并没有共享会话的内容，所以是否能
 ** target_surface
    surface应该类似于Guacamole的display
 ** 
+* 零散
+  - offscreen 
+* 参考
+  - [[https://www.zhihu.com/question/20191727][OCR文字识别用的是什么算法？]]
