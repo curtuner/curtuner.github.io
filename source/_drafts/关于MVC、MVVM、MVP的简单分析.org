@@ -1,0 +1,5 @@
+#+TITLE: 关于MVC、MVVM、MVP的简单分析
+#+DATE: 2018-05-12
+#+LAYOUT: post
+#+TAGS:
+#+CATEGORIES:
